@@ -24,3 +24,9 @@ data/
 # Logs
 *.log
 /tmp/
+
+# MiniSearch build artifacts
+MiniSearch.icns
+MiniSearch.iconset/
+*.log
+/tmp/
