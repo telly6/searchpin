@@ -69,7 +69,6 @@ def resolve_host(host):
 
     # Try system resolver first
     try:
-        import socket
         addr = socket.getaddrinfo(host, 443)[0][4][0]
         with _dns_cache_lock:
             _dns_cache[host] = addr
@@ -86,7 +85,6 @@ def resolve_host(host):
             ctx.verify_mode = ssl.CERT_NONE
 
             # Build request with custom Host header
-            from urllib.parse import urlparse
             parsed = urlparse(doh_url)
             doh_host = parsed.netloc
 
@@ -353,11 +351,11 @@ class StreamConverter:
     def finalize(self):
         """Generate a well-formed Anthropic SSE sequence.
 
-        Rules:
-        - If text was produced → emit a single text block (index 0),
-          discard any tool calls, finish as end_turn.
-        - Else if only reasoning was produced → emit it as text.
-        - Else if only tool calls → emit tool-use blocks.
+        - text + tool_calls → both are emitted (text first, then tools)
+        - text only → single text block
+        - tool_calls only → tool-use blocks
+        - reasoning only → emitted as text
+        - empty → empty text block
         - Exactly one message_start … message_stop cycle.
         """
         if self.finished:
@@ -595,7 +593,6 @@ def _http_get(host, path="/", port=443, timeout=15, follow_redirects=False, max_
         if use_ssl:
             ctx = ssl.create_default_context()
             conn = http.client.HTTPSConnection(ip, port, timeout=timeout, context=ctx)
-            orig_connect = conn.connect
             def _custom_connect():
                 sock = _sock.create_connection((ip, port), timeout=timeout)
                 conn.sock = ctx.wrap_socket(sock, server_hostname=host)
@@ -673,8 +670,7 @@ def _cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
 def _embedding_rerank(query, all_results, max_results):
-    """Re-rank results by embedding cosine similarity to the query.
-    The model is loaded lazily on first call."""
+    """Re-rank results by embedding cosine similarity to the query."""
     if not all_results:
         return []
 
@@ -693,19 +689,7 @@ def _embedding_rerank(query, all_results, max_results):
     scored = []
     for i, r in enumerate(all_results):
         sim = _cosine_similarity(query_vec, doc_vecs[i])
-
-        # Small keyword bonus for price-related queries
-        combined = (r.get("title", "") + " " + r.get("snippet", "")).lower()
-        bonus = 0.0
-        for kw in ["付费", "会员", "价格", "订阅", "收费", "费用", "定价",
-                    "月费", "多少钱", "pro版", "专业版", "付费版", "涨价",
-                    "开始收费", "不再免费", "price", "subscription"]:
-            if kw.lower() in combined:
-                bonus += 0.01
-        if "doubao.com" in r.get("url", "").lower():
-            bonus -= 0.05
-
-        scored.append((sim + bonus, r))
+        scored.append((sim, r))
 
     scored.sort(key=lambda x: x[0], reverse=True)
     top = [r for _, r in scored[:max_results]]
@@ -733,9 +717,6 @@ def _do_web_search(query, max_results=10):
     # Backend 1: Bing Web (cn.bing.com) — with query expansion + pagination
     def _bing_path(q):
         return f"/search?q={urllib.parse.quote(q)}&count={max_results}"
-    def _bing_enriched_path(q):
-        # Append high-signal paid/charging keywords as OR alternatives
-        return f"/search?q={urllib.parse.quote(q)}+%28%E4%BB%98%E8%B4%B9+OR+%E4%BC%9A%E5%91%98+OR+%E8%AE%A2%E9%98%85+OR+%E4%BB%B7%E6%A0%BC+OR+%E6%B6%A8%E4%BB%B7%29&count={max_results}"
     def _bing_page2_path(q):
         return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11"
     def _bing_parse(html):
@@ -755,13 +736,44 @@ def _do_web_search(query, max_results=10):
                 snippet = snippet.replace("&ensp;", " ").replace("&#0183;", "·")
             if title:
                 results.append({"title": title, "url": h2_m.group(1), "snippet": snippet})
+
+        # Fallback: if strict b_algo parse returned nothing, use a generic
+        # link scraper that grabs any real-looking <a href> from the page.
+        # Noisier but prevents returning zero results when bing changes markup.
+        if not results:
+            print("[SEARCH] b_algo miss, trying generic <a> fallback", file=sys.stderr, flush=True)
+            skip_domains = {"bing.com", "microsoft.com", "live.com", "msn.com"}
+            seen = set()
+            for m in re.finditer(
+                r'<a[^>]*href="((?:https?://)?[^"]+)"[^>]*>(.*?)</a>',
+                html, re.DOTALL,
+            ):
+                url = m.group(1)
+                if not url.startswith("http"):
+                    continue
+                parsed_url = urlparse(url)
+                domain = parsed_url.netloc.lower()
+                if any(d in domain for d in skip_domains):
+                    continue
+                url_key = url.lower().rstrip("/")
+                if url_key in seen:
+                    continue
+                seen.add(url_key)
+                title = re.sub(r'<[^>]+>', '', m.group(2)).strip()
+                title = unescape(title)
+                if not title or len(title) < 4:
+                    continue
+                results.append({"title": title, "url": url, "snippet": ""})
+                if len(results) >= max_results:
+                    break
+            if results:
+                print(f"[SEARCH] fallback found {len(results)} links", file=sys.stderr, flush=True)
+
         return results
     backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
-    backends.append(("cn.bing.com", _bing_enriched_path, _bing_parse, False, 443))
     backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))
 
     # ── Try all backends in parallel, merge and deduplicate ──
-    import threading
     from concurrent.futures import ThreadPoolExecutor, as_completed
     all_results_lock = threading.Lock()
     all_results = []
@@ -807,7 +819,7 @@ def _do_web_search(query, max_results=10):
     _search_cooldown_until = 0
     _search_fail_count = 0
 
-    # ── Re-rank with embedding similarity (fallback to keywords) ──
+    # ── Re-rank with embedding similarity ──
     top = _embedding_rerank(query, all_results, max_results)
     return {"results": top, "query": query, "backend": "bing"}
 
@@ -1018,7 +1030,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             conn = http.client.HTTPSConnection(
                 deepseek_ip, 443, timeout=30, context=ctx
             )
-            original_connect = conn.connect
             def custom_connect():
                 sock = sock_module.create_connection((deepseek_ip, 443), timeout=30)
                 conn.sock = ctx.wrap_socket(sock, server_hostname=DEEPSEEK_HOST)
@@ -1073,14 +1084,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             if final_output:
                 self.wfile.write(final_output.encode())
                 self.wfile.flush()
-                # DEBUG: write raw SSE to file for inspection
-                try:
-                    with open("/tmp/proxy-debug.sse", "a") as f:
-                        f.write(f"=== {time.strftime('%H:%M:%S')} msgs={len(deepseek_body.get('messages',[]))} ===\n")
-                        f.write(final_output)
-                        f.write("\n\n")
-                except Exception:
-                    pass
 
             t_total = time.time() - t0
             print(f"[TIMING] dns={t_dns:.2f}s ttfb={t_ttfb:.2f}s total={t_total:.2f}s "
@@ -1133,7 +1136,6 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         import socket as sock_module
         ctx = ssl.create_default_context()
         conn = http.client.HTTPSConnection(deepseek_ip, 443, timeout=120, context=ctx)
-        original_connect = conn.connect
         def custom_connect():
             sock = sock_module.create_connection((deepseek_ip, 443), timeout=120)
             conn.sock = ctx.wrap_socket(sock, server_hostname=DEEPSEEK_HOST)
