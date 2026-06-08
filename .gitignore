@@ -1,0 +1,26 @@
+__pycache__/
+*.pyc
+*.pyo
+.cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Local config (contains API key settings)
+.claude/
+
+# Runtime data
+data/
+
+# Logs
+*.log
+/tmp/
