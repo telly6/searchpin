@@ -23,7 +23,7 @@ from fastembed import TextEmbedding
 
 # ── Config ──────────────────────────────────────────────────
 PRODUCT_NAME = os.environ.get("MINISEARCH_NAME", "MiniSearch")
-DEFAULT_PORT = int(os.environ.get("MINISEARCH_PORT", "8789"))
+DEFAULT_MODEL_NAME = "BAAI/bge-small-zh-v1.5"
 
 # DNS-over-HTTPS endpoints (tried in order)
 DOH_ENDPOINTS = [
@@ -64,26 +64,38 @@ class SearchEngine:
     """Self-contained web search engine.  DNS-over-HTTPS, Bing scraping,
     and local embedding re-rank — no external API keys needed."""
 
-    def __init__(self, port=None):
-        self.port = port or DEFAULT_PORT
+    def __init__(self, model_name=None, max_workers=3,
+                 embedding_mode="local", api_endpoint=None, api_key=None,
+                 api_model=None):
+        self.model_name = model_name or DEFAULT_MODEL_NAME
+        self.max_workers = max_workers
+        self.embedding_mode = embedding_mode
+        self.api_endpoint = api_endpoint
+        self.api_key = api_key
+        self.api_model = api_model
 
         # ── Embedding model ──
-        print(f"[{PRODUCT_NAME}] loading embedding model (BAAI/bge-small-zh-v1.5)...",
-              file=sys.stderr, flush=True)
-        try:
-            self._embedding_model = TextEmbedding(
-                model_name="BAAI/bge-small-zh-v1.5",
-                local_files_only=True,
-            )
-        except Exception:
-            print(f"[{PRODUCT_NAME}] model not cached, downloading from HuggingFace...",
+        if embedding_mode == "local":
+            print(f"[{PRODUCT_NAME}] loading embedding model ({self.model_name})...",
                   file=sys.stderr, flush=True)
-            self._embedding_model = TextEmbedding(
-                model_name="BAAI/bge-small-zh-v1.5",
-                local_files_only=False,
-            )
-        print(f"[{PRODUCT_NAME}] embedding model ready (dim=512)",
-              file=sys.stderr, flush=True)
+            try:
+                self._embedding_model = TextEmbedding(
+                    model_name=self.model_name,
+                    local_files_only=True,
+                )
+            except Exception:
+                print(f"[{PRODUCT_NAME}] model not cached, downloading from HuggingFace...",
+                      file=sys.stderr, flush=True)
+                self._embedding_model = TextEmbedding(
+                    model_name=self.model_name,
+                    local_files_only=False,
+                )
+            print(f"[{PRODUCT_NAME}] embedding model ready",
+                  file=sys.stderr, flush=True)
+        else:
+            self._embedding_model = None
+            print(f"[{PRODUCT_NAME}] using API embedding: {api_endpoint} (model={api_model})",
+                  file=sys.stderr, flush=True)
 
         # ── DNS cache ──
         self._dns_cache = {}
@@ -106,7 +118,7 @@ class SearchEngine:
             addr = socket.getaddrinfo(host, 443)[0][4][0]
             with self._dns_cache_lock:
                 self._dns_cache[host] = addr
-            print(f"[DNS] system resolver: {host} → {addr}")
+            print(f"[DNS] system resolver: {host} → {addr}", file=sys.stderr, flush=True)
             return addr
         except Exception:
             pass
@@ -132,11 +144,11 @@ class SearchEngine:
                             addr = ans["data"]
                             with self._dns_cache_lock:
                                 self._dns_cache[host] = addr
-                            print(f"[DNS] {host} → {addr} (via {doh_host})")
+                            print(f"[DNS] {host} → {addr} (via {doh_host})", file=sys.stderr, flush=True)
                             return addr
                 conn.close()
             except Exception as e:
-                print(f"[DNS] DoH {doh_host} failed: {e}")
+                print(f"[DNS] DoH {doh_host} failed: {e}", file=sys.stderr, flush=True)
                 continue
 
         raise Exception(f"Cannot resolve {host} via any method")
@@ -224,6 +236,43 @@ class SearchEngine:
     def _cosine_similarity(self, a, b):
         return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
+    def _api_embed(self, texts):
+        """Get embeddings from an external OpenAI-compatible API."""
+        body = json.dumps({
+            "model": self.api_model,
+            "input": texts,
+        }).encode("utf-8")
+
+        parsed = urlparse(self.api_endpoint)
+        host = parsed.netloc.split(":")[0]
+        port = 443
+        if ":" in parsed.netloc:
+            port = int(parsed.netloc.split(":")[1])
+        path = parsed.path or "/v1/embeddings"
+
+        ctx = ssl.create_default_context()
+        conn = http.client.HTTPSConnection(host, port, timeout=30, context=ctx)
+        conn.request("POST", path, body, {
+            "Host": host,
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        })
+        resp = conn.getresponse()
+        data = json.loads(resp.read())
+        conn.close()
+
+        if resp.status != 200:
+            raise Exception(f"API embedding error {resp.status}: {data}")
+
+        embeddings = [item["embedding"] for item in sorted(data["data"], key=lambda x: x["index"])]
+        return embeddings
+
+    def _embed(self, texts):
+        """Get embeddings from local model or API depending on mode."""
+        if self.embedding_mode == "api":
+            return self._api_embed(texts)
+        return list(self._embedding_model.embed(texts))
+
     def _embedding_rerank(self, query, all_results, max_results):
         """Re-rank results by embedding cosine similarity to the query."""
         if not all_results:
@@ -231,7 +280,7 @@ class SearchEngine:
 
         docs = [f"{r.get('title', '')} {r.get('snippet', '')}" for r in all_results]
         all_texts = [query] + docs
-        embeddings = list(self._embedding_model.embed(all_texts))
+        embeddings = self._embed(all_texts)
         query_vec = np.array(embeddings[0])
         doc_vecs = np.array(embeddings[1:])
 
@@ -345,7 +394,7 @@ class SearchEngine:
             except Exception as e:
                 return host, "", None, e
 
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
             futures = [ex.submit(_fetch_one, h, pf, ps, fw, p)
                        for h, pf, ps, fw, p in backends]
             for fut in as_completed(futures):
@@ -421,6 +470,6 @@ class SearchEngine:
 # ── Main (when run directly for testing) ───────────────────
 if __name__ == "__main__":
     engine = SearchEngine()
-    print(f"[{PRODUCT_NAME}] engine ready, port={engine.port}", file=sys.stderr)
+    print(f"[{PRODUCT_NAME}] engine ready", file=sys.stderr)
     results = engine.search("test", max_results=3)
     print(json.dumps(results, ensure_ascii=False, indent=2))

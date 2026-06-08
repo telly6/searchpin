@@ -1,19 +1,28 @@
 #!/usr/bin/env python3
 """
-MiniSearch MCP HTTP Server
-Thin wrapper around SearchEngine — serves web_search + web_fetch via MCP JSON-RPC.
+MiniSearch MCP Server (stdio transport)
+AI agent launches this as a subprocess. Reads JSON-RPC from stdin, writes to stdout.
+Config loaded from ~/.minisearch/config.json
 """
 
 import json
 import os
 import sys
-import http.server
-from urllib.parse import urlparse
 
-from search_engine import SearchEngine, MCP_TOOLS, PRODUCT_NAME
+from search_engine import SearchEngine, MCP_TOOLS, PRODUCT_NAME, DEFAULT_MODEL_NAME
 
-DEFAULT_PORT = int(os.environ.get("MINISEARCH_PORT", "8789"))
-LISTEN_HOST = "127.0.0.1"
+CONFIG_DIR = os.path.expanduser("~/.minisearch")
+CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
+
+
+def load_config():
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH) as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
 
 
 def build_response(rid, result):
@@ -61,80 +70,53 @@ def handle_mcp_request(body, engine):
         return build_error(rid, -32601, f"Method not found: {method}")
 
 
-class MCPHandler(http.server.BaseHTTPRequestHandler):
-    engine = None  # set by server module
-
-    def log_message(self, format, *args):
-        pass
-
-    def _send_json(self, code, data):
-        body = json.dumps(data).encode()
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", len(body))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(body)
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "*")
-        self.end_headers()
-
-    def do_GET(self):
-        path = urlparse(self.path).path
-        if path == "/health":
-            self._send_json(200, {"status": "ok", "name": PRODUCT_NAME})
-        else:
-            self._send_json(404, {"error": "not found"})
-
-    def do_POST(self):
-        path = urlparse(self.path).path
-        try:
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length))
-
-            if path == "/mcp":
-                result = handle_mcp_request(body, self.engine)
-                if result is not None:
-                    self._send_json(200, result)
-                else:
-                    self.send_response(202)
-                    self.end_headers()
-            else:
-                self._send_json(404, {"error": f"unknown endpoint: {path}"})
-        except json.JSONDecodeError:
-            self._send_json(400, {"error": "invalid JSON"})
-        except Exception as e:
-            print(f"[ERROR] {e}", file=sys.stderr, flush=True)
-            self._send_json(500, {"error": str(e)})
-
-
 def main():
-    port = DEFAULT_PORT
-    # Support --port flag (overrides env var)
-    for i, arg in enumerate(sys.argv[1:]):
-        if arg == "--port" and i + 1 < len(sys.argv):
-            port = int(sys.argv[i + 1])
+    cfg = load_config()
 
-    print(f"[{PRODUCT_NAME}] starting search engine...", file=sys.stderr, flush=True)
-    engine = SearchEngine(port=port)
-    MCPHandler.engine = engine
+    model_name = cfg.get("model_name", DEFAULT_MODEL_NAME)
+    max_workers = cfg.get("max_workers", 3)
+    embedding_mode = cfg.get("embedding_mode", "local")
+    api_endpoint = cfg.get("api_endpoint", "")
+    api_key = cfg.get("api_key", "")
+    api_model = cfg.get("api_model", "")
 
-    print(f"[{PRODUCT_NAME}] listening on http://{LISTEN_HOST}:{port}", file=sys.stderr, flush=True)
-    print(f"[{PRODUCT_NAME}] health: http://{LISTEN_HOST}:{port}/health", file=sys.stderr, flush=True)
-    print(f"[{PRODUCT_NAME}] MCP endpoint: http://{LISTEN_HOST}:{port}/mcp", file=sys.stderr, flush=True)
+    print(f"[{PRODUCT_NAME}] starting engine (stdio mode)...",
+          file=sys.stderr, flush=True)
 
-    http.server.HTTPServer.allow_reuse_address = True
-    server = http.server.HTTPServer((LISTEN_HOST, port), MCPHandler)
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print(f"\n[{PRODUCT_NAME}] shutting down...", file=sys.stderr, flush=True)
-        server.shutdown()
-        engine.close()
+    engine = SearchEngine(
+        model_name=model_name,
+        max_workers=max_workers,
+        embedding_mode=embedding_mode,
+        api_endpoint=api_endpoint or None,
+        api_key=api_key or None,
+        api_model=api_model or None,
+    )
+
+    print(f"[{PRODUCT_NAME}] engine ready, waiting for requests on stdin",
+          file=sys.stderr, flush=True)
+
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+
+        try:
+            body = json.loads(line)
+            result = handle_mcp_request(body, engine)
+            if result is not None:
+                sys.stdout.write(json.dumps(result, ensure_ascii=False) + "\n")
+                sys.stdout.flush()
+        except json.JSONDecodeError as e:
+            err = build_error(None, -32700, f"Parse error: {e}")
+            sys.stdout.write(json.dumps(err, ensure_ascii=False) + "\n")
+            sys.stdout.flush()
+        except Exception as e:
+            print(f"[{PRODUCT_NAME}] error: {e}", file=sys.stderr, flush=True)
+            err = build_error(None, -32603, str(e))
+            sys.stdout.write(json.dumps(err, ensure_ascii=False) + "\n")
+            sys.stdout.flush()
+
+    engine.close()
 
 
 if __name__ == "__main__":
