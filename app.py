@@ -190,13 +190,28 @@ class MiniSearchApp:
         self.model_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        def _on_mousewheel(event):
-            self.model_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        def _on_scroll(event):
+            if event.delta:
+                # macOS trackpad sends small deltas (±1); Windows/mice send ±120
+                delta = event.delta if abs(event.delta) < 10 else event.delta / 120
+                self.model_canvas.yview_scroll(int(-delta), "units")
+            elif event.num == 4:
+                self.model_canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                self.model_canvas.yview_scroll(1, "units")
 
-        self.model_canvas.bind("<Enter>",
-            lambda _: self.model_canvas.bind_all("<MouseWheel>", _on_mousewheel))
-        self.model_canvas.bind("<Leave>",
-            lambda _: self.model_canvas.unbind_all("<MouseWheel>"))
+        def _bind():
+            self.model_canvas.bind_all("<MouseWheel>", _on_scroll)
+            self.model_canvas.bind_all("<Button-4>", _on_scroll)
+            self.model_canvas.bind_all("<Button-5>", _on_scroll)
+
+        def _unbind():
+            self.model_canvas.unbind_all("<MouseWheel>")
+            self.model_canvas.unbind_all("<Button-4>")
+            self.model_canvas.unbind_all("<Button-5>")
+
+        self.model_canvas.bind("<Enter>", lambda _: _bind())
+        self.model_canvas.bind("<Leave>", lambda _: _unbind())
 
         self._build_model_rows()
 
@@ -214,7 +229,8 @@ class MiniSearchApp:
 
             rb = ttk.Radiobutton(
                 row, text="", variable=self._model_selection_var(),
-                value=m["model"])
+                value=m["model"],
+                state=tk.NORMAL if m["cached"] else tk.DISABLED)
             rb.pack(side=tk.LEFT)
             self._model_radios[m["model"]] = rb
 

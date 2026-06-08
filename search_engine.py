@@ -19,6 +19,7 @@ import numpy as np
 from urllib.parse import urlparse
 from html import unescape
 
+import trafilatura
 from fastembed import TextEmbedding
 
 # ── Config ──────────────────────────────────────────────────
@@ -35,7 +36,15 @@ DOH_ENDPOINTS = [
 MCP_TOOLS = [
     {
         "name": "web_search",
-        "description": "Search the web using Bing. Returns real-time titles, URLs, and snippets. Use for factual, up-to-date queries.",
+        "description": (
+            "Search the web in real time using Bing. Returns ranked titles, URLs, and snippets "
+            "from live search results with near-duplicate removal.\n\n"
+            "WHEN TO SEARCH — prefer searching whenever:\n"
+            "- The query involves facts, news, events, dates, prices, or product information\n"
+            "- You are unsure about any detail (search is cheaper than hallucination)\n"
+            "- The user asks about recent developments, documentation, or real-world data\n"
+            "- Comparing options or verifying claims that exist outside your training data"
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -47,7 +56,11 @@ MCP_TOOLS = [
     },
     {
         "name": "web_fetch",
-        "description": "Fetch and return the text content of a specific URL (article, documentation, API response). For search queries, use web_search instead. Do NOT use this to fetch search engine result pages.",
+        "description": (
+            "Fetch a URL and return clean, extracted text content (boilerplate, ads, and nav removed). "
+            "Use to read articles, documentation pages, or API responses in full.\n"
+            "For broad queries, use web_search first, then fetch specific URLs from its results."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -96,6 +109,11 @@ class SearchEngine:
             self._embedding_model = None
             print(f"[{PRODUCT_NAME}] using API embedding: {api_endpoint} (model={api_model})",
                   file=sys.stderr, flush=True)
+
+        # ── HTTP connection pool (API mode) ──
+        self._api_conn = None
+        self._api_conn_host = None
+        self._api_conn_lock = threading.Lock()
 
         # ── DNS cache ──
         self._dns_cache = {}
@@ -236,36 +254,105 @@ class SearchEngine:
     def _cosine_similarity(self, a, b):
         return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
+    def _get_api_connection(self):
+        """Return a cached HTTPS connection, creating one if needed."""
+        parsed = urlparse(self.api_endpoint)
+        host = parsed.netloc
+        port = 443
+        if ":" in parsed.netloc:
+            host_name, port_str = parsed.netloc.rsplit(":", 1)
+            host = host_name
+            port = int(port_str)
+
+        with self._api_conn_lock:
+            if self._api_conn_host != host and self._api_conn:
+                try:
+                    self._api_conn.close()
+                except Exception:
+                    pass
+                self._api_conn = None
+                self._api_conn_host = None
+
+            if self._api_conn is None:
+                ctx = ssl.create_default_context()
+                self._api_conn = http.client.HTTPSConnection(
+                    host, port, timeout=30, context=ctx)
+                self._api_conn_host = host
+
+            return self._api_conn, host, port
+
     def _api_embed(self, texts):
-        """Get embeddings from an external OpenAI-compatible API."""
+        """Get embeddings from an external OpenAI-compatible API
+        with connection reuse, retry, and exponential backoff."""
+
         body = json.dumps({
             "model": self.api_model,
             "input": texts,
         }).encode("utf-8")
 
         parsed = urlparse(self.api_endpoint)
-        host = parsed.netloc.split(":")[0]
-        port = 443
-        if ":" in parsed.netloc:
-            port = int(parsed.netloc.split(":")[1])
         path = parsed.path or "/v1/embeddings"
 
-        ctx = ssl.create_default_context()
-        conn = http.client.HTTPSConnection(host, port, timeout=30, context=ctx)
-        conn.request("POST", path, body, {
-            "Host": host,
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
-        })
-        resp = conn.getresponse()
-        data = json.loads(resp.read())
-        conn.close()
+        RETRY_MAX = 3
+        RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
 
-        if resp.status != 200:
-            raise Exception(f"API embedding error {resp.status}: {data}")
+        last_error = None
 
-        embeddings = [item["embedding"] for item in sorted(data["data"], key=lambda x: x["index"])]
-        return embeddings
+        for attempt in range(RETRY_MAX):
+            try:
+                t0 = time.time()
+                conn, host, port = self._get_api_connection()
+
+                conn.request("POST", path, body, {
+                    "Host": host,
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Connection": "keep-alive",
+                })
+                resp = conn.getresponse()
+                data = json.loads(resp.read())
+                elapsed_ms = int((time.time() - t0) * 1000)
+
+                if resp.status == 200:
+                    embeddings = [item["embedding"] for item in sorted(
+                        data["data"], key=lambda x: x["index"])]
+                    print(f"[{PRODUCT_NAME}] api embed ok {len(texts)} texts "
+                          f"→ {len(embeddings)} vectors {elapsed_ms}ms",
+                          file=sys.stderr, flush=True)
+                    return embeddings
+
+                # Non-retryable client errors (except 429)
+                if resp.status != 200 and resp.status not in RETRYABLE_STATUSES:
+                    raise Exception(
+                        f"API embedding error {resp.status}: {data}")
+
+                last_error = Exception(
+                    f"API embedding error {resp.status} (attempt {attempt+1}/{RETRY_MAX}): {data}")
+
+            except (http.client.HTTPException, ConnectionError, TimeoutError,
+                    ssl.SSLError, OSError) as e:
+                # Connection-level error — close and recreate next time
+                last_error = e
+                with self._api_conn_lock:
+                    try:
+                        self._api_conn.close()
+                    except Exception:
+                        pass
+                    self._api_conn = None
+                    self._api_conn_host = None
+            except Exception as e:
+                if "API embedding error" in str(e):
+                    last_error = e
+                else:
+                    raise
+
+            if attempt < RETRY_MAX - 1:
+                delay = 2 ** attempt
+                print(f"[{PRODUCT_NAME}] api embed retry in {delay}s: {last_error}",
+                      file=sys.stderr, flush=True)
+                time.sleep(delay)
+
+        raise Exception(f"API embedding failed after {RETRY_MAX} attempts: {last_error}")
 
     def _embed(self, texts):
         """Get embeddings from local model or API depending on mode."""
@@ -273,8 +360,38 @@ class SearchEngine:
             return self._api_embed(texts)
         return list(self._embedding_model.embed(texts))
 
+    def _semantic_dedup(self, results, doc_vecs, threshold=0.92):
+        """Remove near-duplicate results by embedding similarity.
+        When two results score above threshold, keeps the one with longer content."""
+        if len(results) <= 1:
+            return list(range(len(results))), doc_vecs
+
+        keep = list(range(len(results)))
+        keep_doc_vecs = list(doc_vecs)
+
+        for i in range(len(results)):
+            for j in range(i + 1, len(results)):
+                if j not in keep or i not in keep:
+                    continue
+                sim = self._cosine_similarity(doc_vecs[i], doc_vecs[j])
+                if sim > threshold:
+                    # Keep the one with longer snippet+title
+                    len_i = len(f"{results[i].get('title','')} {results[i].get('snippet','')}")
+                    len_j = len(f"{results[j].get('title','')} {results[j].get('snippet','')}")
+                    remove = i if len_i < len_j else j
+                    if remove in keep:
+                        keep.remove(remove)
+
+        if len(keep) < len(results):
+            print(f"[SEARCH] dedup: {len(results)} → {len(keep)} results "
+                  f"(removed {len(results)-len(keep)} near-duplicates)",
+                  file=sys.stderr, flush=True)
+
+        return [results[i] for i in keep], [doc_vecs[i] for i in keep]
+
     def _embedding_rerank(self, query, all_results, max_results):
-        """Re-rank results by embedding cosine similarity to the query."""
+        """Re-rank results by embedding cosine similarity to the query.
+        Also performs semantic dedup using the same embedding batch."""
         if not all_results:
             return []
 
@@ -283,6 +400,9 @@ class SearchEngine:
         embeddings = self._embed(all_texts)
         query_vec = np.array(embeddings[0])
         doc_vecs = np.array(embeddings[1:])
+
+        # Semantic dedup
+        all_results, doc_vecs = self._semantic_dedup(all_results, doc_vecs)
 
         scored = []
         for i, r in enumerate(all_results):
@@ -319,10 +439,10 @@ class SearchEngine:
         backends = []
 
         def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}"
+            return f"/search?q={urllib.parse.quote(q)}&count={max_results}{mkt_suffix}"
 
         def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11"
+            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11{mkt_suffix}"
 
         def _bing_parse(html):
             results = []
@@ -374,6 +494,11 @@ class SearchEngine:
 
             return results
 
+        # Route to appropriate Bing region by query language
+        has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
+        mkt_suffix = "" if has_cjk else "&ensearch=1"
+        print(f"[SEARCH] using cn.bing.com (mkt={'zh-CN' if has_cjk else 'en-US'})",
+                  file=sys.stderr, flush=True)
         backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
         backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))
 
@@ -456,6 +581,13 @@ class SearchEngine:
                 text = body.decode(charset, errors="replace")
             except Exception:
                 text = body.decode("utf-8", errors="replace")
+
+            extracted = trafilatura.extract(
+                text, include_comments=False, include_tables=True,
+                include_images=False, include_links=False, output_format="txt",
+            )
+            if extracted:
+                text = extracted
             if len(text) > max_length:
                 text = text[:max_length] + "\n... [truncated]"
             return {"status": resp.status, "content_type": ct, "body": text, "error": None}
@@ -463,8 +595,13 @@ class SearchEngine:
             return {"status": 0, "content_type": "", "body": "", "error": str(e)}
 
     def close(self):
-        """Clean up resources (reserved for future use)."""
-        pass
+        """Clean up resources."""
+        if self._api_conn:
+            try:
+                self._api_conn.close()
+            except Exception:
+                pass
+            self._api_conn = None
 
 
 # ── Main (when run directly for testing) ───────────────────
