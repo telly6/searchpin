@@ -33,7 +33,7 @@ LISTEN_HOST = "127.0.0.1"
 LISTEN_PORT = 8788
 DEEPSEEK_HOST = "api.deepseek.com"
 DEEPSEEK_PATH = "/v1/chat/completions"
-DEEPSEEK_MODEL = "deepseek-v4-pro"
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-pro")
 
 # DNS-over-HTTPS endpoints (tried in order)
 DOH_ENDPOINTS = [
