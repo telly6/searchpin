@@ -9,22 +9,26 @@ import http.client
 import json
 import os
 import re
+import shutil
 import socket
 import ssl
 import sys
+import tarfile
+import tempfile
 import threading
 import time
 import urllib.parse
-import numpy as np
 from urllib.parse import urlparse
+from pathlib import Path
 from html import unescape
 
+import numpy as np
 import trafilatura
 from fastembed import TextEmbedding
 
 # ── Config ──────────────────────────────────────────────────
 PRODUCT_NAME = os.environ.get("MINISEARCH_NAME", "MiniSearch")
-DEFAULT_MODEL_NAME = "BAAI/bge-small-zh-v1.5"
+DEFAULT_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 # DNS-over-HTTPS endpoints (tried in order)
 DOH_ENDPOINTS = [
@@ -50,6 +54,14 @@ MCP_TOOLS = [
             "properties": {
                 "query": {"type": "string", "description": "Search query keywords"},
                 "max_results": {"type": "integer", "description": "Max results (default 10)", "default": 10},
+                "freshness": {
+                    "type": "string",
+                    "description": (
+                        "Bing time filter. One of: d (past day), w (past week), m (past month), y (past year). "
+                        "Omit for no time filter. Use w or m for news, reviews, community discussions, "
+                        "or any query where freshness matters."
+                    ),
+                },
             },
             "required": ["query"],
         },
@@ -79,49 +91,39 @@ class SearchEngine:
 
     def __init__(self, model_name=None, max_workers=3,
                  embedding_mode="local", api_endpoint=None, api_key=None,
-                 api_model=None):
+                 api_model=None, search_mkt="auto"):
         self.model_name = model_name or DEFAULT_MODEL_NAME
         self.max_workers = max_workers
         self.embedding_mode = embedding_mode
         self.api_endpoint = api_endpoint
         self.api_key = api_key
         self.api_model = api_model
+        self.search_mkt = search_mkt
+
+        # ── Infrastructure (init before model loading) ──
+        self._api_conn = None
+        self._api_conn_host = None
+        self._api_conn_lock = threading.Lock()
+        self._dns_cache = {}
+        self._dns_cache_lock = threading.Lock()
+        self._search_cooldown_until = 0
+        self._search_fail_count = 0
 
         # ── Embedding model ──
         if embedding_mode == "local":
+            if not os.environ.get("HF_ENDPOINT"):
+                os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
             print(f"[{PRODUCT_NAME}] loading embedding model ({self.model_name})...",
                   file=sys.stderr, flush=True)
-            try:
-                self._embedding_model = TextEmbedding(
-                    model_name=self.model_name,
-                    local_files_only=True,
-                )
-            except Exception:
-                print(f"[{PRODUCT_NAME}] model not cached, downloading from HuggingFace...",
-                      file=sys.stderr, flush=True)
-                self._embedding_model = TextEmbedding(
-                    model_name=self.model_name,
-                    local_files_only=False,
-                )
-            print(f"[{PRODUCT_NAME}] embedding model ready",
-                  file=sys.stderr, flush=True)
+            self._embedding_model = self._load_local_model()
         else:
             self._embedding_model = None
             print(f"[{PRODUCT_NAME}] using API embedding: {api_endpoint} (model={api_model})",
                   file=sys.stderr, flush=True)
 
-        # ── HTTP connection pool (API mode) ──
-        self._api_conn = None
-        self._api_conn_host = None
-        self._api_conn_lock = threading.Lock()
-
-        # ── DNS cache ──
-        self._dns_cache = {}
-        self._dns_cache_lock = threading.Lock()
-
-        # ── Search cooldown ──
-        self._search_cooldown_until = 0
-        self._search_fail_count = 0
+        print(f"[{PRODUCT_NAME}] embedding model ready",
+              file=sys.stderr, flush=True)
 
     # ── DNS Resolution ──────────────────────────────────────
 
@@ -248,6 +250,145 @@ class SearchEngine:
             return resp, body
 
         return resp, body
+
+    # ── Embedding model ──────────────────────────────────────
+
+    GITHUB_MODELS_URL = "https://github.com/telly6/claude-proxy/releases/download/models-v1"
+
+    def _load_local_model(self):
+        """Load embedding model with layered fallback:
+        1. Use local_files_only — fastembed checks all cache locations
+        2. Download from GitHub Releases → extract tar.gz → use
+        3. Download from HuggingFace via fastembed → use
+        4. Scan cache for any loadable model as last resort
+        """
+        model_slug = self.model_name.split("/")[-1]
+        cache_dir = self._fastembed_cache_dir()
+        model_dir = cache_dir / f"fast-{model_slug}"
+
+        # ── Layer 1: try loading from any local cache ──
+        try:
+            print(f"[{PRODUCT_NAME}] checking local cache for {self.model_name}...",
+                  file=sys.stderr, flush=True)
+            return TextEmbedding(
+                model_name=self.model_name,
+                local_files_only=True,
+            )
+        except Exception:
+            print(f"[{PRODUCT_NAME}] not found in local cache",
+                  file=sys.stderr, flush=True)
+
+        # ── Layer 2: download from GitHub Releases ──
+        if self._download_from_github(model_slug, model_dir):
+            return TextEmbedding(
+                model_name=self.model_name,
+                specific_model_path=str(model_dir),
+                local_files_only=True,
+            )
+
+        # ── Layer 3: download via fastembed (HF mirror) ──
+        print(f"[{PRODUCT_NAME}] trying HuggingFace download...",
+              file=sys.stderr, flush=True)
+        try:
+            return TextEmbedding(
+                model_name=self.model_name,
+                local_files_only=False,
+            )
+        except Exception as e:
+            print(f"[{PRODUCT_NAME}] HF download failed: {e}",
+                  file=sys.stderr, flush=True)
+            return self._fallback_embedding()
+
+    @staticmethod
+    def _fastembed_cache_dir():
+        """Unified cache directory matching fastembed's native location."""
+        return Path(os.path.expanduser("~/.cache/huggingface/hub"))
+
+    def _download_from_github(self, model_slug, model_dir):
+        """Download model tar.gz from GitHub Releases and extract.
+        Uses urllib for maximum reliability — no DNS hacks, no custom HTTP.
+        Returns True on success, False on any failure."""
+        import urllib.request
+
+        targz_path = model_dir.parent / f"{model_slug}.tar.gz"
+        url = f"{self.GITHUB_MODELS_URL}/{model_slug}.tar.gz"
+
+        try:
+            print(f"[{PRODUCT_NAME}] downloading from GitHub: {url}",
+                  file=sys.stderr, flush=True)
+
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "MiniSearch/1.0",
+                "Accept": "application/octet-stream",
+            })
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                if resp.status != 200:
+                    print(f"[{PRODUCT_NAME}] GitHub returned {resp.status}",
+                          file=sys.stderr, flush=True)
+                    return False
+                body = resp.read()
+
+            targz_path.write_bytes(body)
+            print(f"[{PRODUCT_NAME}] downloaded {len(body)/1024/1024:.0f}MB, extracting...",
+                  file=sys.stderr, flush=True)
+
+            with tarfile.open(targz_path, "r:gz") as tar:
+                tar.extractall(path=model_dir.parent)
+
+            targz_path.unlink()
+
+            if model_dir.exists() and any(model_dir.iterdir()):
+                print(f"[{PRODUCT_NAME}] model extracted to {model_dir}",
+                      file=sys.stderr, flush=True)
+                return True
+            return False
+        except Exception as e:
+            print(f"[{PRODUCT_NAME}] GitHub download failed: {e}",
+                  file=sys.stderr, flush=True)
+            if targz_path.exists():
+                targz_path.unlink()
+            if model_dir.exists():
+                shutil.rmtree(model_dir)
+            return False
+
+    def _fallback_embedding(self):
+        """Last-resort: scan cache for any loadable model."""
+        from fastembed import TextEmbedding
+
+        # Try any fast-* directory in the cache
+        cache = self._fastembed_cache_dir()
+        for d in sorted(cache.glob("fast-*")):
+            if not d.is_dir():
+                continue
+            onnx_files = list(d.glob("*.onnx")) + list(d.glob("onnx/*.onnx"))
+            if not onnx_files:
+                continue
+            print(f"[{PRODUCT_NAME}] fallback: trying {d.name}",
+                  file=sys.stderr, flush=True)
+            try:
+                return TextEmbedding(
+                    model_name=self.model_name,
+                    specific_model_path=str(d),
+                    local_files_only=True,
+                )
+            except Exception:
+                continue
+
+        # Try any model fastembed knows about that might be cached
+        for m in TextEmbedding.list_supported_models():
+            try:
+                return TextEmbedding(
+                    model_name=m["model"],
+                    local_files_only=True,
+                )
+            except Exception:
+                continue
+
+        raise Exception(
+            "No embedding model available. "
+            "Download one via the MiniSearch app or run search_server.py "
+            "with a working internet connection."
+        )
 
     # ── Embedding re-rank ───────────────────────────────────
 
@@ -417,11 +558,11 @@ class SearchEngine:
 
     # ── Web search ──────────────────────────────────────────
 
-    def search(self, query, max_results=10):
+    def search(self, query, max_results=10, freshness=None):
         """Search the web and return structured results."""
-        return self._do_web_search(query, max_results)
+        return self._do_web_search(query, max_results, freshness)
 
-    def _do_web_search(self, query, max_results=10):
+    def _do_web_search(self, query, max_results=10, freshness=None):
         """Web search via DoH-resolved HTTPS. Tries multiple backends in parallel."""
         if not query or not query.strip():
             return {"error": "empty query", "results": [], "query": query}
@@ -435,14 +576,19 @@ class SearchEngine:
                 "query": query,
             }
 
+        # ── Time filter ───────────────────────────────────────
+        freshness_suffix = ""
+        if freshness in ("d", "w", "m", "y"):
+            freshness_suffix = f"&tbs=qdr:{freshness}"
+
         # ── Backend registry ───────────────────────────────────
         backends = []
 
         def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}{mkt_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count={max_results}{mkt_suffix}{freshness_suffix}"
 
         def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11{mkt_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11{mkt_suffix}{freshness_suffix}"
 
         def _bing_parse(html):
             results = []
@@ -453,6 +599,26 @@ class SearchEngine:
                     continue
                 title = re.sub(r'<[^>]+>', '', h2_m.group(2)).strip()
                 title = unescape(title)
+
+                # Extract real URL from <cite> element — the h2 <a> link
+                # points to a Bing click-tracker, not the destination page.
+                url = h2_m.group(1)
+                cite_m = re.search(r'<cite[^>]*>(.*?)</cite>', blk, re.DOTALL)
+                if cite_m:
+                    cite_text = re.sub(r'<[^>]+>', '', cite_m.group(1)).strip()
+                    cite_text = unescape(cite_text).strip()
+                    # Bing breadcrumb: "domain.com › path › page"
+                    segments = [s.strip() for s in cite_text.split("›")]
+                    base = segments[0]
+                    if base.startswith("http"):
+                        if len(segments) > 1:
+                            path = "/".join(segments[1:])
+                            url = base.rstrip("/") + "/" + path
+                        else:
+                            url = base
+                    else:
+                        url = "https://" + base
+
                 snip_m = re.search(r'<p[^>]*class="[^"]*b_lineclamp[^"]*"[^>]*>(.*?)</p>', blk, re.DOTALL)
                 snippet = ""
                 if snip_m:
@@ -460,7 +626,7 @@ class SearchEngine:
                     snippet = unescape(snippet)
                     snippet = snippet.replace("&ensp;", " ").replace("&#0183;", "·")
                 if title:
-                    results.append({"title": title, "url": h2_m.group(1), "snippet": snippet})
+                    results.append({"title": title, "url": url, "snippet": snippet})
 
             # Fallback: generic link scraper
             if not results:
@@ -494,10 +660,15 @@ class SearchEngine:
 
             return results
 
-        # Route to appropriate Bing region by query language
-        has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
-        mkt_suffix = "" if has_cjk else "&ensearch=1"
-        print(f"[SEARCH] using cn.bing.com (mkt={'zh-CN' if has_cjk else 'en-US'})",
+        # Route to appropriate Bing region
+        if self.search_mkt == "en-US":
+            mkt_suffix = "&ensearch=1"
+        elif self.search_mkt == "zh-CN":
+            mkt_suffix = ""
+        else:  # auto — detect by query language
+            has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
+            mkt_suffix = "" if has_cjk else "&ensearch=1"
+        print(f"[SEARCH] using cn.bing.com (mkt={self.search_mkt}, suffix={'none' if not mkt_suffix else mkt_suffix})",
                   file=sys.stderr, flush=True)
         backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
         backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))

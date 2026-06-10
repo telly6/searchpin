@@ -25,6 +25,9 @@ data/
 *.log
 /tmp/
 
+# Model packaging (uploaded to GitHub Releases, not the repo)
+packaged_models/
+
 # MiniSearch build artifacts
 MiniSearch.icns
 MiniSearch.iconset/

@@ -17,7 +17,7 @@ from tkinter import messagebox
 from tkinter import ttk
 
 from search_engine import SearchEngine, PRODUCT_NAME, DEFAULT_MODEL_NAME
-from model_manager import list_all_models, download_model, delete_model, get_cached_size_mb
+from model_manager import list_all_models, download_model, delete_model, get_cached_size_mb, MODEL_RECOMMENDATIONS
 
 CONFIG_DIR = os.path.expanduser("~/.minisearch")
 CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
@@ -64,6 +64,7 @@ class MiniSearchApp:
             "api_endpoint": saved.get("api_endpoint", "https://api.openai.com/v1/embeddings"),
             "api_key": saved.get("api_key", ""),
             "api_model": saved.get("api_model", "text-embedding-3-small"),
+            "search_mkt": saved.get("search_mkt", "auto"),
         }
 
         self.ram_gb = detect_ram_gb()
@@ -136,6 +137,11 @@ class MiniSearchApp:
         self.workers_var = tk.StringVar(value=str(self.config["max_workers"]))
         self.workers_entry = ttk.Entry(settings, textvariable=self.workers_var, width=8)
         self.workers_entry.grid(row=0, column=1, sticky=tk.W, pady=2)
+        self._make_info_dot(settings, 0, 2,
+            "同时向多个搜索引擎后端发起请求的线程数。"
+            "推荐值 2-4：太低会慢，太高可能触发 Bing 限速。"
+            "网络稳定的环境下设为 3 即可。"
+        )
         self.workers_var.trace_add("write", lambda *_: self._on_config_change())
 
         # Max results
@@ -144,7 +150,28 @@ class MiniSearchApp:
         self.results_var = tk.StringVar(value=str(self.config["max_results"]))
         self.results_entry = ttk.Entry(settings, textvariable=self.results_var, width=8)
         self.results_entry.grid(row=1, column=1, sticky=tk.W, pady=2)
+        self._make_info_dot(settings, 1, 2,
+            "返回给大模型的搜索结果数量。"
+            "推荐 5-10 条：太少可能遗漏关键信息，"
+            "太多会占用大模型上下文窗口且增加嵌入计算耗时。"
+        )
         self.results_var.trace_add("write", lambda *_: self._on_config_change())
+
+        # Search market
+        ttk.Label(settings, text="搜索区域",
+                  font=("Helvetica", 10)).grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.mkt_var = tk.StringVar(value=self.config["search_mkt"])
+        self.mkt_combo = ttk.Combobox(settings, textvariable=self.mkt_var,
+                                       values=["auto", "en-US", "zh-CN"],
+                                       state="readonly", width=10)
+        self.mkt_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
+        self.mkt_var.trace_add("write", lambda *_: self._on_config_change())
+        self._make_info_dot(settings, 2, 2,
+            "Bing 搜索引擎的区域偏好。"
+            "auto：根据查询语言自动选择；"
+            "en-US：强制英文结果，适合搜技术文档、社区讨论；"
+            "zh-CN：强制中文结果，适合搜国内资讯。"
+        )
 
         # ── Buttons ──
         btn_frame = ttk.Frame(outer)
@@ -164,7 +191,7 @@ class MiniSearchApp:
         self._on_mode_switch()
 
     def _build_model_list(self):
-        """Scrollable model list for local mode."""
+        """Model list for local mode."""
         header = ttk.Frame(self.models_frame)
         header.pack(fill=tk.X, pady=(0, 2))
         ttk.Label(header, text="模型", font=("Helvetica", 10, "bold")) \
@@ -172,48 +199,47 @@ class MiniSearchApp:
         ttk.Label(header, text="状态", font=("Helvetica", 10, "bold")) \
             .pack(side=tk.RIGHT, padx=(0, 50))
 
-        canvas_frame = ttk.Frame(self.models_frame)
-        canvas_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.model_canvas = tk.Canvas(canvas_frame, highlightthickness=0, height=240)
-        scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL,
-                                   command=self.model_canvas.yview)
-        self.model_list_inner = ttk.Frame(self.model_canvas)
-
-        self.model_list_inner.bind("<Configure>",
-            lambda e: self.model_canvas.configure(
-                scrollregion=self.model_canvas.bbox("all")))
-        self.model_canvas.create_window((0, 0), window=self.model_list_inner,
-                                         anchor=tk.NW, tags="inner")
-
-        self.model_canvas.configure(yscrollcommand=scrollbar.set)
-        self.model_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-        def _on_scroll(event):
-            if event.delta:
-                # macOS trackpad sends small deltas (±1); Windows/mice send ±120
-                delta = event.delta if abs(event.delta) < 10 else event.delta / 120
-                self.model_canvas.yview_scroll(int(-delta), "units")
-            elif event.num == 4:
-                self.model_canvas.yview_scroll(-1, "units")
-            elif event.num == 5:
-                self.model_canvas.yview_scroll(1, "units")
-
-        def _bind():
-            self.model_canvas.bind_all("<MouseWheel>", _on_scroll)
-            self.model_canvas.bind_all("<Button-4>", _on_scroll)
-            self.model_canvas.bind_all("<Button-5>", _on_scroll)
-
-        def _unbind():
-            self.model_canvas.unbind_all("<MouseWheel>")
-            self.model_canvas.unbind_all("<Button-4>")
-            self.model_canvas.unbind_all("<Button-5>")
-
-        self.model_canvas.bind("<Enter>", lambda _: _bind())
-        self.model_canvas.bind("<Leave>", lambda _: _unbind())
+        self.model_list_inner = ttk.Frame(self.models_frame)
+        self.model_list_inner.pack(fill=tk.BOTH, expand=True)
 
         self._build_model_rows()
+
+    def _show_tooltip(self, widget, text, event=None):
+        """Show a small tooltip card near the widget."""
+        if hasattr(self, '_tooltip_win') and self._tooltip_win:
+            self._tooltip_win.destroy()
+        x = widget.winfo_rootx() - 12
+        y = widget.winfo_rooty() + widget.winfo_height() + 4
+        tip = tk.Toplevel(widget)
+        tip.wm_overrideredirect(True)
+        tip.wm_geometry(f"+{x}+{y}")
+        frame = ttk.Frame(tip, borderwidth=0, padding=8)
+        frame.pack()
+        ttk.Label(
+            frame, text=text, wraplength=280,
+            font=("Helvetica", 10), foreground="#333333", background="#ffffff",
+        ).pack()
+        frame.configure(style="Tooltip.TFrame")
+        self._tooltip_win = tip
+
+    def _hide_tooltip(self, event=None):
+        if hasattr(self, '_tooltip_win') and self._tooltip_win:
+            self._tooltip_win.destroy()
+            self._tooltip_win = None
+
+    def _make_info_dot(self, parent, row, col, tip_text):
+        """Place a small info circle with tooltip in a grid cell."""
+        size = 14
+        dot = tk.Canvas(
+            parent, width=size, height=size,
+            highlightthickness=0, bd=0, cursor="hand2",
+        )
+        dot.create_oval(1, 1, size - 1, size - 1, fill="#d0d0d0", outline="#d0d0d0")
+        dot.create_text(size // 2, size // 2, text="?", fill="#ffffff",
+                        font=("Helvetica", 8, "bold"))
+        dot.grid(row=row, column=col, sticky=tk.W, padx=(4, 0), pady=2)
+        dot.bind("<Enter>", lambda e, w=dot, t=tip_text: self._show_tooltip(w, t))
+        dot.bind("<Leave>", self._hide_tooltip)
 
     def _build_model_rows(self):
         for widget in self.model_list_inner.winfo_children():
@@ -221,7 +247,12 @@ class MiniSearchApp:
         self._model_rows.clear()
         self._model_radios = {}
 
-        self.models.sort(key=lambda m: (not m["cached"], -m["size_gb"], m["model"]))
+        self.models.sort(key=lambda m: (
+            m["model"] != DEFAULT_MODEL_NAME,
+            not m["cached"],
+            -m["size_gb"],
+            m["model"],
+        ))
 
         for m in self.models:
             row = ttk.Frame(self.model_list_inner)
@@ -237,13 +268,34 @@ class MiniSearchApp:
             info = ttk.Frame(row)
             info.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            ttk.Label(info, text=m["model"].split("/")[-1],
-                      font=("Helvetica", 10)).pack(anchor=tk.W)
+            name_label = ttk.Label(info, text=m["model"].split("/")[-1],
+                      font=("Helvetica", 10))
+            name_label.pack(anchor=tk.W)
 
             tags_str = " · ".join(m["tags"]) + f" · {m['dim']}维 · {m['size_mb']}MB"
             ttk.Label(info, text=tags_str,
                       foreground="#888888", font=("Helvetica", 9)) \
                 .pack(anchor=tk.W)
+
+            # Info button with tooltip — small circle
+            rec_text = MODEL_RECOMMENDATIONS.get(m["model"], "")
+            if rec_text:
+                size = 14
+                info_canvas = tk.Canvas(
+                    row, width=size, height=size,
+                    highlightthickness=0, bd=0, cursor="hand2",
+                )
+                info_canvas.create_oval(
+                    1, 1, size - 1, size - 1,
+                    fill="#d0d0d0", outline="#d0d0d0",
+                )
+                info_canvas.create_text(
+                    size // 2, size // 2, text="?", fill="#ffffff",
+                    font=("Helvetica", 8, "bold"),
+                )
+                info_canvas.pack(side=tk.RIGHT, padx=(0, 2))
+                info_canvas.bind("<Enter>", lambda e, w=info_canvas, t=rec_text: self._show_tooltip(w, t))
+                info_canvas.bind("<Leave>", self._hide_tooltip)
 
             action_frame = ttk.Frame(row)
             action_frame.pack(side=tk.RIGHT, padx=(4, 4))
@@ -401,6 +453,7 @@ class MiniSearchApp:
             "api_endpoint": self.api_endpoint_var.get(),
             "api_key": self.api_key_var.get(),
             "api_model": self.api_model_var.get(),
+            "search_mkt": self.mkt_var.get(),
         }
 
     def _save_current_config(self):
@@ -417,6 +470,7 @@ class MiniSearchApp:
         self.api_endpoint_var.set(cfg["api_endpoint"])
         self.api_key_var.set(cfg["api_key"])
         self.api_model_var.set(cfg["api_model"])
+        self.mkt_var.set(cfg.get("search_mkt", "auto"))
 
     # ═══════════════════════════════════════════════════════════
     # Test search
@@ -439,6 +493,7 @@ class MiniSearchApp:
                     api_endpoint=cfg["api_endpoint"] or None,
                     api_key=cfg["api_key"] or None,
                     api_model=cfg["api_model"] or None,
+                    search_mkt=cfg.get("search_mkt", "auto"),
                 )
 
                 result = engine.search("你好", max_results=cfg["max_results"])

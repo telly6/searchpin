@@ -58,7 +58,7 @@ def handle_mcp_request(body, engine):
         tool_name = params.get("name", "")
         args = params.get("arguments", {})
         if tool_name == "web_search":
-            result = engine.search(args.get("query", ""), args.get("max_results", 5))
+            result = engine.search(args.get("query", ""), args.get("max_results", 5), args.get("freshness"))
         elif tool_name == "web_fetch":
             result = engine.fetch(args.get("url", ""), args.get("max_length", 30000))
         else:
@@ -79,6 +79,7 @@ def main():
     api_endpoint = cfg.get("api_endpoint", "")
     api_key = cfg.get("api_key", "")
     api_model = cfg.get("api_model", "")
+    search_mkt = cfg.get("search_mkt", "auto")
 
     print(f"[{PRODUCT_NAME}] starting engine (stdio mode)...",
           file=sys.stderr, flush=True)
@@ -90,6 +91,7 @@ def main():
         api_endpoint=api_endpoint or None,
         api_key=api_key or None,
         api_model=api_model or None,
+        search_mkt=search_mkt,
     )
 
     print(f"[{PRODUCT_NAME}] engine ready, waiting for requests on stdin",
