@@ -90,14 +90,13 @@ class SearchEngine:
 
     def __init__(self, model_name=None, max_workers=3,
                  embedding_mode="local", api_endpoint=None, api_key=None,
-                 api_model=None, search_mkt="auto"):
+                 api_model=None):
         self.model_name = model_name or DEFAULT_MODEL_NAME
         self.max_workers = max_workers
         self.embedding_mode = embedding_mode
         self.api_endpoint = api_endpoint
         self.api_key = api_key
         self.api_model = api_model
-        self.search_mkt = search_mkt
 
         # ── Infrastructure (init before model loading) ──
         self._api_conn = None
@@ -712,16 +711,8 @@ class SearchEngine:
 
             return results
 
-        # Route to appropriate Bing region
-        if self.search_mkt == "en-US":
-            mkt_suffix = "&ensearch=1"
-        elif self.search_mkt == "zh-CN":
-            mkt_suffix = ""
-        else:  # auto — detect by query language
-            has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
-            mkt_suffix = "" if has_cjk else "&ensearch=1"
-        print(f"[SEARCH] using cn.bing.com (mkt={self.search_mkt}, suffix={'none' if not mkt_suffix else mkt_suffix})",
-                  file=sys.stderr, flush=True)
+        has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
+        mkt_suffix = "" if has_cjk else "&ensearch=1"
         backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
         backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))
 

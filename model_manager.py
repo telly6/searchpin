@@ -27,21 +27,9 @@ ALLOWED_MODELS = [
 ]
 
 MODEL_RECOMMENDATIONS = {
-    "BAAI/bge-small-zh-v1.5": (
-        "默认首选，覆盖中英文混合搜索。"
-        "92MB 极轻量，在 C-MTEB 中文基准上达到同尺寸最佳水平，"
-        "适合大多数日常搜索场景。"
-    ),
-    "BAAI/bge-small-en-v1.5": (
-        "纯英文搜索最轻量方案。"
-        "仅 68MB，384 维向量，推理速度最快，"
-        "适合纯英文内容为主、对启动速度要求高的场景。"
-    ),
-"sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": (
-        "多语言通用兜底方案。"
-        "覆盖 50+ 语言，384 维轻量但覆盖面广，"
-        "适合非中英文场景，或需要同时搜索多语言内容的场景。"
-    ),
+    "BAAI/bge-small-zh-v1.5": "日常首选。中文、中英混合、编程查询都优先用它。",
+    "BAAI/bge-small-en-v1.5": "纯英文场景切这个。搜英文文档、论文、RFC 时用。",
+    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": "语言兜底。搜法语、德语、日语、韩语等非中英文内容时用。",
 }
 
 

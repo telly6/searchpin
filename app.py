@@ -64,7 +64,6 @@ class MiniSearchApp:
             "api_endpoint": saved.get("api_endpoint", "https://api.openai.com/v1/embeddings"),
             "api_key": saved.get("api_key", ""),
             "api_model": saved.get("api_model", "text-embedding-3-small"),
-            "search_mkt": saved.get("search_mkt", "auto"),
         }
 
         self.ram_gb = detect_ram_gb()
@@ -156,22 +155,6 @@ class MiniSearchApp:
             "太多会占用大模型上下文窗口且增加嵌入计算耗时。"
         )
         self.results_var.trace_add("write", lambda *_: self._on_config_change())
-
-        # Search market
-        ttk.Label(settings, text="搜索区域",
-                  font=("Helvetica", 10)).grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.mkt_var = tk.StringVar(value=self.config["search_mkt"])
-        self.mkt_combo = ttk.Combobox(settings, textvariable=self.mkt_var,
-                                       values=["auto", "en-US", "zh-CN"],
-                                       state="readonly", width=10)
-        self.mkt_combo.grid(row=2, column=1, sticky=tk.W, pady=2)
-        self.mkt_var.trace_add("write", lambda *_: self._on_config_change())
-        self._make_info_dot(settings, 2, 2,
-            "Bing 搜索引擎的区域偏好。"
-            "auto：根据查询语言自动选择；"
-            "en-US：强制英文结果，适合搜技术文档、社区讨论；"
-            "zh-CN：强制中文结果，适合搜国内资讯。"
-        )
 
         # ── Buttons ──
         btn_frame = ttk.Frame(outer)
@@ -453,7 +436,6 @@ class MiniSearchApp:
             "api_endpoint": self.api_endpoint_var.get(),
             "api_key": self.api_key_var.get(),
             "api_model": self.api_model_var.get(),
-            "search_mkt": self.mkt_var.get(),
         }
 
     def _save_current_config(self):
@@ -470,7 +452,6 @@ class MiniSearchApp:
         self.api_endpoint_var.set(cfg["api_endpoint"])
         self.api_key_var.set(cfg["api_key"])
         self.api_model_var.set(cfg["api_model"])
-        self.mkt_var.set(cfg.get("search_mkt", "auto"))
 
     # ═══════════════════════════════════════════════════════════
     # Test search
@@ -493,7 +474,6 @@ class MiniSearchApp:
                     api_endpoint=cfg["api_endpoint"] or None,
                     api_key=cfg["api_key"] or None,
                     api_model=cfg["api_model"] or None,
-                    search_mkt=cfg.get("search_mkt", "auto"),
                 )
 
                 result = engine.search("你好", max_results=cfg["max_results"])
