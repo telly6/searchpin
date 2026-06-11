@@ -23,8 +23,6 @@ GITHUB_MODELS_BASE = (
 ALLOWED_MODELS = [
     "BAAI/bge-small-zh-v1.5",
     "BAAI/bge-small-en-v1.5",
-    "BAAI/bge-large-en-v1.5",
-    "jinaai/jina-embeddings-v2-base-zh",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 ]
 
@@ -39,17 +37,7 @@ MODEL_RECOMMENDATIONS = {
         "仅 68MB，384 维向量，推理速度最快，"
         "适合纯英文内容为主、对启动速度要求高的场景。"
     ),
-    "BAAI/bge-large-en-v1.5": (
-        "英文高质量方案。"
-        "1024 维向量保留更多语义细节，MTEB 检索任务同系列最高分，"
-        "适合对搜索结果质量要求高、愿意用磁盘空间换精度的场景。"
-    ),
-    "jinaai/jina-embeddings-v2-base-zh": (
-        "中英混合长文本方案。"
-        "支持 8192 token 上下文，处理长网页搜索结果不会截断，"
-        "适合搜索内容偏长文、技术文档、论文摘要等场景。"
-    ),
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": (
+"sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": (
         "多语言通用兜底方案。"
         "覆盖 50+ 语言，384 维轻量但覆盖面广，"
         "适合非中英文场景，或需要同时搜索多语言内容的场景。"

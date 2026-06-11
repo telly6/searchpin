@@ -14,7 +14,6 @@ import socket
 import ssl
 import sys
 import tarfile
-import tempfile
 import threading
 import time
 import urllib.parse
@@ -183,10 +182,15 @@ class SearchEngine:
         use_ssl = (port == 443)
         _jar = cookies
 
+        # Percent-encode any unicode in the path
+        path = urllib.parse.quote(path, safe="/?=&:%")
+
         for _ in range(max_redirects + 1):
             ip = self.resolve_host(host)
             if use_ssl:
                 ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
                 conn = http.client.HTTPSConnection(ip, port, timeout=timeout, context=ctx)
                 def _custom_connect():
                     sock = _sock.create_connection((ip, port), timeout=timeout)
@@ -516,9 +520,9 @@ class SearchEngine:
                     continue
                 sim = self._cosine_similarity(doc_vecs[i], doc_vecs[j])
                 if sim > threshold:
-                    # Keep the one with longer snippet+title
-                    len_i = len(f"{results[i].get('title','')} {results[i].get('snippet','')}")
-                    len_j = len(f"{results[j].get('title','')} {results[j].get('snippet','')}")
+                    # Keep the one with longer content
+                    len_i = len(results[i].get("fulltext", "")) or len(f"{results[i].get('title','')} {results[i].get('snippet','')}")
+                    len_j = len(results[j].get("fulltext", "")) or len(f"{results[j].get('title','')} {results[j].get('snippet','')}")
                     remove = i if len_i < len_j else j
                     if remove in keep:
                         keep.remove(remove)
@@ -530,13 +534,61 @@ class SearchEngine:
 
         return [results[i] for i in keep], [doc_vecs[i] for i in keep]
 
+    def _fetch_all_content(self, all_results, max_fetch=10):
+        """Fetch full page content for each result concurrently.
+        Stores extracted text in result['fulltext']. Falls back to snippet
+        on any fetch failure — always leaves 'fulltext' non-empty."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        if not all_results:
+            return
+
+        to_fetch = all_results[:max_fetch]
+
+        def _fetch_one(r):
+            try:
+                parsed = urlparse(r["url"])
+                host = parsed.netloc.split(":")[0]
+                port = 443
+                if ":" in parsed.netloc:
+                    port = int(parsed.netloc.split(":")[1])
+                path = parsed.path or "/"
+                if parsed.query:
+                    path += "?" + parsed.query
+                resp, body = self._http_get(host, path, port=port, timeout=8)
+                ct = resp.headers.get("Content-Type", "")
+                charset = "utf-8"
+                if "charset=" in ct:
+                    charset = ct.split("charset=")[-1].split(";")[0].strip()
+                html = body.decode(charset, errors="replace")
+                extracted = trafilatura.extract(
+                    html, include_comments=False, include_tables=True,
+                    include_images=False, include_links=False, output_format="txt",
+                )
+                if extracted and len(extracted) > 100:
+                    r["fulltext"] = extracted
+                else:
+                    r["fulltext"] = f"{r.get('title', '')} {r.get('snippet', '')}"
+            except Exception:
+                r["fulltext"] = f"{r.get('title', '')} {r.get('snippet', '')}"
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
+            futures = [ex.submit(_fetch_one, r) for r in to_fetch]
+            for fut in as_completed(futures):
+                pass  # results stored in-place
+
+        fetched = sum(1 for r in to_fetch
+                      if len(r.get("fulltext", "")) > len(f"{r.get('title','')} {r.get('snippet','')}"))
+        print(f"[SEARCH] fetched fulltext for {fetched}/{len(to_fetch)} pages",
+              file=sys.stderr, flush=True)
+
     def _embedding_rerank(self, query, all_results, max_results):
         """Re-rank results by embedding cosine similarity to the query.
         Also performs semantic dedup using the same embedding batch."""
         if not all_results:
             return []
 
-        docs = [f"{r.get('title', '')} {r.get('snippet', '')}" for r in all_results]
+        docs = [r.get("fulltext") or f"{r.get('title', '')} {r.get('snippet', '')}" for r in all_results]
         all_texts = [query] + docs
         embeddings = self._embed(all_texts)
         query_vec = np.array(embeddings[0])
@@ -721,6 +773,9 @@ class SearchEngine:
 
         self._search_cooldown_until = 0
         self._search_fail_count = 0
+
+        # Fetch full page content before embedding re-rank
+        self._fetch_all_content(all_results, max_fetch=max_results)
 
         top = self._embedding_rerank(query, all_results, max_results)
         return {"results": top, "query": query, "backend": "bing"}

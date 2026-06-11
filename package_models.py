@@ -24,8 +24,6 @@ if not os.environ.get("HF_ENDPOINT"):
 MODEL_FILE_MAP = {
     "BAAI/bge-small-zh-v1.5": "model_optimized.onnx",
     "BAAI/bge-small-en-v1.5": "model_optimized.onnx",
-    "BAAI/bge-large-en-v1.5": "model.onnx",
-    "jinaai/jina-embeddings-v2-base-zh": "onnx/model.onnx",
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": "model_optimized.onnx",
 }
 
