@@ -61,6 +61,8 @@ def handle_mcp_request(body, engine):
             result = engine.search(args.get("query", ""), args.get("max_results", 5), args.get("freshness"))
         elif tool_name == "web_fetch":
             result = engine.fetch(args.get("url", ""), args.get("max_length", 30000))
+        elif tool_name == "session_history":
+            result = engine.session_history(args.get("keyword"), args.get("max_results", 10))
         else:
             return build_error(rid, -32601, f"Unknown tool: {tool_name}")
         return build_response(rid, {
