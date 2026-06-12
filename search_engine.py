@@ -41,12 +41,10 @@ MCP_TOOLS = [
         "name": "web_search",
         "description": (
             "Search the web in real time using Bing. Returns ranked titles, URLs, snippets, "
-            "and a quality assessment that tells you whether results are good, mixed, or poor.\n\n"
+            "and full page content (when available).\n\n"
             "IMPORTANT — Iterative search is the default, not the exception:\n"
             "- Treat the first search as reconnaissance. Read the results to learn the "
             "vocabulary of the domain, then search again with better, more specific terms.\n"
-            "- If quality.level is \"mixed\" or \"poor\", the response includes "
-            "suggested_queries and a tip explaining what went wrong. Use them.\n"
             "- The typical pattern is: search → read → refine → search → read → "
             "synthesize. Two or three rounds is normal for complex questions.\n"
             "- Use web_fetch on promising URLs to get full page content before synthesizing "
@@ -615,11 +613,9 @@ class SearchEngine:
 
     def _embedding_rerank(self, query, all_results, max_results):
         """Re-rank results by embedding cosine similarity to the query.
-        Also performs semantic dedup using the same embedding batch.
-        Returns (top_results, quality_meta) — quality_meta includes all similarity
-        scores for quality assessment."""
+        Also performs semantic dedup using the same embedding batch."""
         if not all_results:
-            return [], {"max_sim": 0, "avg_sim": 0, "all_scores": []}
+            return []
 
         docs = [r.get("fulltext") or f"{r.get('title', '')} {r.get('snippet', '')}" for r in all_results]
         all_texts = [query] + docs
@@ -631,26 +627,16 @@ class SearchEngine:
         all_results, doc_vecs = self._semantic_dedup(all_results, doc_vecs)
 
         scored = []
-        sims = []
         for i, r in enumerate(all_results):
             sim = self._cosine_similarity(query_vec, doc_vecs[i])
-            # Blend domain authority score (30% weight)
-            domain = urlparse(r["url"]).netloc.lower().lstrip("www.")
-            domain_score = 0.0
-            for known, weight in self.DOMAIN_SCORES.items():
-                if domain == known or domain.endswith("." + known):
-                    domain_score = weight
-                    break
-            blended = sim * 0.7 + domain_score * 0.3
-            scored.append((blended, sim, r))
-            sims.append(sim)
+            scored.append((sim, r))
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
         # Diversity: max 2 results per domain
         top = []
         dom_counts = {}
-        for blended, sim, r in scored:
+        for sim, r in scored:
             domain = urlparse(r["url"]).netloc.lower().lstrip("www.")
             root_domain = ".".join(domain.split(".")[-2:])  # e.g. python.org
             if dom_counts.get(root_domain, 0) >= 2:
@@ -660,249 +646,12 @@ class SearchEngine:
             if len(top) >= max_results:
                 break
 
-        quality_meta = {
-            "max_sim": float(max(sims)) if sims else 0,
-            "avg_sim": float(sum(sims) / len(sims)) if sims else 0,
-            "all_scores": sims,
-            "total_unique": len(all_results),
-        }
         print(f"[SEARCH] merged {len(all_results)} unique, returning top {len(top)} after embedding re-rank",
               file=sys.stderr, flush=True)
-        return top, quality_meta
+        return top
 
     # ── Web search ──────────────────────────────────────────
 
-    DICT_DOMAINS = {
-        "merriam-webster.com", "dictionary.cambridge.org", "collinsdictionary.com",
-        "thefreedictionary.com", "oxfordlearnersdictionaries.com", "dictionary.com",
-        "macmillandictionary.com", "ldoceonline.com", "vocabulary.com",
-    }
-    CN_TLD = {".cn", ".com.cn", ".org.cn", ".net.cn", ".gov.cn"}
-
-    # Domain authority bonus/penalty blended into rerank score
-    DOMAIN_SCORES = {
-        # High authority
-        "arxiv.org": 0.30, "github.com": 0.25, "stackoverflow.com": 0.25,
-        "docs.python.org": 0.25, "developer.mozilla.org": 0.25,
-        "en.wikipedia.org": 0.20, "kubernetes.io": 0.20,
-        "pytorch.org": 0.20, "tensorflow.org": 0.20,
-        "reactjs.org": 0.20, "nodejs.org": 0.20, "golang.org": 0.20,
-        "rust-lang.org": 0.20, "llvm.org": 0.20,
-        "redhat.com": 0.15, "ibm.com": 0.15, "aws.amazon.com": 0.15,
-        "cloud.google.com": 0.15, "learn.microsoft.com": 0.15,
-        "apple.com/developer": 0.15, "man7.org": 0.15,
-        # Medium authority
-        "medium.com": 0.05, "dev.to": 0.10, "freecodecamp.org": 0.10,
-        "realpython.com": 0.10, "geeksforgeeks.org": 0.05,
-        "tutorialspoint.com": 0.05, "w3schools.com": 0.05,
-        "stackexchange.com": 0.10, "superuser.com": 0.10,
-        "serverfault.com": 0.10, "askubuntu.com": 0.10,
-        # Low authority / SEO farms
-        "csdn.net": -0.15, "baike.baidu.com": -0.10,
-        "zhihu.com": -0.05, "jianshu.com": -0.10,
-        "blog.csdn.net": -0.20, "cnblogs.com": -0.05,
-    }
-
-    # Sites to fallback-search when Bing results are low quality.
-    # Format: (host, path_template, label, needs_ssl)
-    # cn.bing.com ignores site: operator, so we hit each site's own search.
-    FALLBACK_SITES = [
-        (
-            "github.com",
-            "/search?type=repositories&q={query}",
-            "GitHub",
-            True,
-        ),
-        (
-            "arxiv.org",
-            "/search/?searchtype=all&query={query}",
-            "arXiv",
-            True,
-        ),
-    ]
-
-    def _assess_quality(self, query, results, quality_meta):
-        """Analyze search results and return quality signals + suggested
-        follow-up queries. Guides the LLM toward iterative refinement."""
-        flags = []
-        suggested = []
-        tip = None
-
-        if not results:
-            return {
-                "level": "poor",
-                "max_similarity": 0,
-                "avg_similarity": 0,
-                "flags": ["no_results"],
-                "suggested_queries": [],
-                "tip": "No results found. Try shorter, more general keywords.",
-            }
-
-        # ── Stopword stripping helper ──
-        _SW = {"how", "to", "what", "is", "a", "the", "in", "of", "for",
-               "and", "or", "it", "on", "at", "does", "do", "be", "by",
-               "with", "from", "definition", "meaning", "mean", "define",
-               "explain", "about", "vs", "versus", "best", "top", "new",
-               "latest", "get", "use", "using", "can", "why", "when", "where",
-               "which", "who", "an", "are", "was", "were", "has", "had", "not",
-               "its", "this", "that", "these", "those", "some", "any", "all",
-               "will", "would", "could", "should", "may", "might", "just"}
-        _content_words = [w for w in query.split()
-                          if w.lower() not in _SW and (len(w) > 1 or w.isdigit())]
-        _core = " ".join(_content_words) if _content_words else query
-
-        # ── Dictionary trap detection ──
-        dict_count = 0
-        for r in results:
-            domain = urlparse(r["url"]).netloc.lower()
-            domain = domain.lstrip("www.")
-            if domain in self.DICT_DOMAINS:
-                dict_count += 1
-        if dict_count >= len(results) * 0.3:
-            flags.append("dictionary_trap")
-            tip = "Results are dominated by dictionary definitions. Add technical or domain-specific terms to your query."
-            if _content_words:
-                suggested.append(_core + " explained practical examples")
-                suggested.append("guide to " + _core)
-
-        # ── Language mismatch detection ──
-        has_cjk_query = bool(re.search(r'[一-鿿]', query))
-        cn_count = 0
-        for r in results:
-            domain = urlparse(r["url"]).netloc.lower()
-            if any(domain.endswith(t) for t in self.CN_TLD):
-                cn_count += 1
-        if not has_cjk_query and cn_count >= len(results) * 0.5:
-            flags.append("language_mismatch")
-            extra = "Most results are Chinese-language sites for an English query. Try adding site restrictions or English-specific keywords."
-            tip = (tip + " " + extra) if tip else extra
-            if _content_words:
-                suggested.append("site:en.wikipedia.org " + _core)
-
-        # ── Keyword mismatch detection ──
-        # Content words from query that should appear in results
-        if _content_words and len(_content_words) >= 2:
-            top5_text = " ".join(
-                f"{r.get('title', '')} {r.get('snippet', '')}".lower()
-                for r in results[:5]
-            )
-            hit_words = [w for w in _content_words if w.lower() in top5_text]
-            # Require at least 2 content words to hit, or >50% hit rate
-            hit_rate = len(hit_words) / len(_content_words)
-            if len(hit_words) < 2:
-                flags.append("keyword_mismatch")
-                missed = [w for w in _content_words if w.lower() not in top5_text]
-                extra = (
-                    f"Only {len(hit_words)}/{len(_content_words)} content words "
-                    f"({', '.join(hit_words) if hit_words else 'none'}) appear in top "
-                    f"results — missing: {', '.join(missed[:4])}. "
-                    "Results may be about the general domain without addressing "
-                    "your specific topic. Try more specific keywords."
-                )
-                tip = (tip + " " + extra) if tip else extra
-                if _content_words and not suggested:
-                    suggested.append(" ".join(_content_words[-2:]))
-
-        # ── Low relevance detection ──
-        if quality_meta["max_sim"] < 0.35:
-            flags.append("low_relevance")
-            extra = "Max embedding similarity is very low—results are likely off-topic. Try different keywords that capture the core concept."
-            tip = (tip + " " + extra) if tip else extra
-            if _content_words and len(_content_words) >= 2:
-                suggested.append(" ".join(_content_words[:2]))
-
-        # ── Limited coverage ──
-        if quality_meta["total_unique"] < 5:
-            flags.append("limited_coverage")
-            extra = "Very few unique results. Broaden your search with fewer or more general terms."
-            tip = (tip + " " + extra) if tip else extra
-            if _content_words and not suggested:
-                suggested.append(" ".join(_content_words[:2]))
-
-        # ── Level ──
-        if len(flags) >= 3 or quality_meta["max_sim"] < 0.2:
-            level = "poor"
-        elif flags:
-            level = "mixed"
-        else:
-            level = "good"
-
-        return {
-            "level": level,
-            "max_similarity": round(quality_meta["max_sim"], 3),
-            "avg_similarity": round(quality_meta["avg_sim"], 3),
-            "flags": flags,
-            "suggested_queries": suggested[:3],
-            "tip": tip,
-        }
-
-    # ── Query rewriting ──────────────────────────────────────
-
-    # Suffixes for generating search variants
-    _SUFFIX_TECH = ["best practices", "tutorial", "guide", "explained", "how to"]
-    _SUFFIX_DEF = ["definition", "meaning", "explained", "overview", "introduction"]
-    _SUFFIX_COMPARE = ["vs", "compared to", "versus", "difference between"]
-
-    _QUESTION_WORDS = {"how", "what", "why", "when", "where", "who", "which",
-                       "does", "do", "is", "are", "was", "were", "can", "could",
-                       "should", "would", "will", "mean", "meaning", "means",
-                       "define", "definition", "explain", "tell", "show"}
-
-    def _rewrite_query(self, query):
-        """Generate 2-3 search-friendly variants from a natural-language query.
-        Removes question words, keeps content terms, adds domain suffixes."""
-        # Already a clean keyword query? Return as-is plus one variant
-        ql = query.lower()
-        q_words = query.split()
-        has_question = any(w.lower() in self._QUESTION_WORDS for w in q_words)
-
-        # Extract content words (non-question, non-stop, keep numbers)
-        content_words = [
-            w for w in q_words
-            if w.lower() not in self._QUESTION_WORDS and (len(w) > 1 or w.isdigit())
-        ]
-        if not content_words:
-            return [query]  # Can't rewrite
-
-        core = " ".join(content_words)
-
-        variants = [query]  # Always include original
-
-        # Detect vs/comparison pattern
-        if any(kw in q_words for kw in ("vs", "versus", "compare", "comparison",
-                                         "difference", "diff", "better", "or")):
-            # Keep core comparison but make it cleaner
-            clean = core.replace(" vs ", " versus ").replace("  ", " ").strip()
-            variants.append(clean)
-            # Also generate an "A compared to B" variant
-            parts = [p.strip() for p in re.split(r'\b(?:vs|versus|compared to|or)\b', core, flags=re.IGNORECASE)]
-            parts = [p for p in parts if p]
-            if len(parts) >= 2:
-                variants.append(f"{parts[0]} compared to {parts[1]}")
-            return list(dict.fromkeys(variants))  # dedup preserve order
-
-        # Queries with question words: strip them, add suffixes
-        if has_question:
-            variants.append(core)
-            # Pick suffix set based on patterns
-            suffixes = self._SUFFIX_DEF if any(
-                k in ql for k in ("what is", "meaning", "define", "definition")
-            ) else self._SUFFIX_TECH
-            for suffix in suffixes[:3]:
-                variant = f"{core} {suffix}"
-                if variant not in variants:
-                    variants.append(variant)
-                    if len(variants) >= 4:
-                        break
-        else:
-            # Already clean keyword query — add one suffixed variant
-            is_tech = any(t in ql for t in ("error", "fix", "config", "api", "code",
-                                             "deploy", "install", "setup", "debug"))
-            suffixes = self._SUFFIX_TECH if is_tech else self._SUFFIX_DEF
-            if content_words:
-                variants.append(f"{core} {suffixes[0]}")
-
-        return list(dict.fromkeys(variants))  # dedup preserve order
 
     def search(self, query, max_results=10, freshness=None):
         """Search the web and return structured results."""
@@ -1012,16 +761,8 @@ class SearchEngine:
         has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
         mkt_suffix = "" if has_cjk else "&ensearch=1"
 
-        # ── Query rewriting: generate variants for broader coverage ──
-        variants = self._rewrite_query(query)
-        if len(variants) > 1:
-            print(f"[SEARCH] query variants: {variants}", file=sys.stderr, flush=True)
-
-        # Each variant gets page 1; original query also gets pages 2 & 3
-        for v in variants:
-            def _make_variant_path(variant_query):
-                return lambda q: f"/search?q={urllib.parse.quote(variant_query)}&count={max_results}{mkt_suffix}{freshness_suffix}"
-            backends.append(("cn.bing.com", _make_variant_path(v), _bing_parse, False, 443))
+        # 3 pages of the original query (no rewriting — LLM decides what to search)
+        backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
         backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))
         backends.append(("cn.bing.com", _bing_page3_path, _bing_parse, False, 443))
 
@@ -1077,133 +818,9 @@ class SearchEngine:
         # Fetch full page content before embedding re-rank
         self._fetch_all_content(all_results, max_fetch=max_results)
 
-        top, quality_meta = self._embedding_rerank(query, all_results, max_results)
-        quality = self._assess_quality(query, top, quality_meta)
+        top = self._embedding_rerank(query, all_results, max_results)
 
-        # ── Site search fallback ────────────────────────────────
-        if quality["level"] in ("mixed", "poor"):
-            site_results = self._site_search_fallback(
-                query, max_results, freshness_suffix, mkt_suffix, all_results
-            )
-            if site_results:
-                # Merge into all_results, re-rank
-                for r in site_results:
-                    url_key = r["url"].lower().rstrip("/")
-                    if url_key not in seen_urls:
-                        seen_urls.add(url_key)
-                        all_results.append(r)
-                self._fetch_all_content(site_results, max_fetch=len(site_results))
-                top, quality_meta = self._embedding_rerank(query, all_results, max_results)
-                quality = self._assess_quality(query, top, quality_meta)
-                # If fallback helped, note it
-                if site_results:
-                    quality["site_fallback"] = True
-                    print(f"[SEARCH] site fallback added {len(site_results)} results, "
-                          f"new quality: {quality['level']}",
-                          file=sys.stderr, flush=True)
-
-        return {"results": top, "query": query, "backend": "bing", "quality": quality}
-
-    def _site_search_fallback(self, query, max_results, freshness_suffix, mkt_suffix, existing):
-        """Search specific high-quality sites when Bing results are weak.
-        cn.bing.com ignores site: operator, so we hit each site's own search directly."""
-        q_words = query.lower().split()
-        content_words = [w for w in q_words
-                         if w.lower() not in self._QUESTION_WORDS
-                         and (len(w) > 1 or w.isdigit())
-                         and w.lower() not in {"how", "why", "with", "from", "make",
-                                                "look", "like", "your", "this", "that",
-                                                "than", "then", "into", "over"}]
-        if not content_words:
-            return []
-
-        existing_urls = {r["url"].lower().rstrip("/") for r in existing}
-        site_query = urllib.parse.quote(" ".join(content_words[:5]))
-        extra_results = []
-
-        for host, path_tpl, label, use_ssl in self.FALLBACK_SITES:
-            if len(extra_results) >= max_results:
-                break
-            path = path_tpl.replace("{query}", site_query)
-            port = 443 if use_ssl else 80
-            try:
-                print(f"[SEARCH] fallback: {host}{path}", file=sys.stderr, flush=True)
-                resp, body = self._http_get(host, path, timeout=8,
-                                            follow_redirects=True, port=port)
-                html = body.decode("utf-8", errors="replace")
-                print(f"[SEARCH] {host} HTTP {resp.status}, {len(html)} bytes",
-                      file=sys.stderr, flush=True)
-                if resp.status != 200 or len(html) < 500:
-                    continue
-
-                # Generic link scraper: find all <a> links to the target host,
-                # filtering nav/header/footer noise
-                links = re.finditer(
-                    r'<a\s[^>]*href="(/[^"]*|https?://(?:www\.)?' +
-                    re.escape(host) + r'[^"]*)"[^>]*>(.*?)</a>',
-                    html, re.DOTALL | re.IGNORECASE,
-                )
-                found = 0
-                for m in links:
-                    if found >= 3:
-                        break
-                    href = m.group(1).strip()
-                    raw_title = re.sub(r'<[^>]+>', '', m.group(2)).strip()
-                    raw_title = unescape(raw_title)
-                    if len(raw_title) < 10:
-                        continue
-                    skip_pats = (
-                        "skip to", "navigation", "search", "login", "sign up",
-                        "sign in", "menu", "footer", "pricing", "features",
-                        "docs", "api", "blog", "about", "terms", "privacy",
-                        "contact", "careers", "help", "product", "enterprise",
-                        "explore", "marketplace", "notifications", "create",
-                        "new", "pull requests", "issues", "codespaces",
-                        "security", "settings", "account", "profile",
-                        "learning", "solutions", "resources", "community",
-                        # GitHub global nav
-                        "github copilot", "copilot", "github actions",
-                        "pulls", "sponsors", "mcp registry",
-                        # arXiv nav
-                        "submit", "help pages",
-                    )
-                    low = raw_title.lower().strip()
-                    if any(low.startswith(p) for p in skip_pats):
-                        continue
-                    # Also filter single-word or very short titles
-                    word_count = len(low.split())
-                    if word_count < 2 and not any(c.isdigit() for c in low):
-                        continue
-                    url = href if href.startswith("http") else f"https://{host}{href}"
-                    url_key = url.lower().rstrip("/")
-                    if url_key in existing_urls:
-                        continue
-                    # Skip marketing/nav/product pages
-                    url_path = urlparse(url).path.lower()
-                    nav_segments = {"features", "pricing", "enterprise",
-                                    "beta", "tour", "help", "about",
-                                    "contact", "careers", "login", "signup",
-                                    "register", "notifications",
-                                    "settings", "account", "solutions",
-                                    "security", "mcp"}
-                    path_parts = set(url_path.strip("/").split("/"))
-                    if nav_segments & path_parts:
-                        continue
-                    extra_results.append({
-                        "title": raw_title,
-                        "url": url,
-                        "snippet": f"From {label}",
-                    })
-                    existing_urls.add(url_key)
-                    found += 1
-                if found:
-                    print(f"[SEARCH] {host} → {found} ({label})",
-                          file=sys.stderr, flush=True)
-            except Exception as e:
-                print(f"[SEARCH] {host} failed: {e}", file=sys.stderr, flush=True)
-
-        return extra_results
-
+        return {"results": top, "query": query, "backend": "bing"}
     # ── Web fetch ───────────────────────────────────────────
 
     def fetch(self, url, max_length=30000):
