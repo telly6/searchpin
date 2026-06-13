@@ -205,7 +205,8 @@ class SearchEngine:
 
     def _http_get(self, host, path="/", port=443, timeout=15,
                   follow_redirects=False, max_redirects=3,
-                  cookies=None, extra_headers=None, force_doh=False):
+                  cookies=None, extra_headers=None, force_doh=False,
+                  accept_language=None):
         """DoH-resolved HTTP/HTTPS GET."""
         import socket as _sock
         use_ssl = (port == 443)
@@ -232,7 +233,7 @@ class SearchEngine:
                 "Host": host,
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
                 "Accept": "text/html,application/json,*/*",
-                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "Accept-Language": accept_language or "en-US,en;q=0.9",
             }
             if _jar:
                 _headers["Cookie"] = _jar
@@ -563,7 +564,7 @@ class SearchEngine:
 
         return [results[i] for i in keep], [doc_vecs[i] for i in keep]
 
-    def _fetch_all_content(self, all_results, max_fetch=10):
+    def _fetch_all_content(self, all_results, max_fetch=10, accept_language=None):
         """Fetch full page content for each result concurrently.
         Stores extracted text in result['fulltext']. Falls back to snippet
         on any fetch failure — always leaves 'fulltext' non-empty."""
@@ -584,7 +585,8 @@ class SearchEngine:
                 path = parsed.path or "/"
                 if parsed.query:
                     path += "?" + parsed.query
-                resp, body = self._http_get(host, path, port=port, timeout=8)
+                resp, body = self._http_get(host, path, port=port, timeout=8,
+                                            accept_language=accept_language)
                 ct = resp.headers.get("Content-Type", "")
                 charset = "utf-8"
                 if "charset=" in ct:
@@ -592,7 +594,7 @@ class SearchEngine:
                 html = body.decode(charset, errors="replace")
                 extracted = trafilatura.extract(
                     html, include_comments=False, include_tables=True,
-                    include_images=False, include_links=False, output_format="txt",
+                    include_images=False, include_links=False, output_format="markdown",
                 )
                 if extracted and len(extracted) > 100:
                     r["fulltext"] = extracted
@@ -633,18 +635,7 @@ class SearchEngine:
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
-        # Diversity: max 2 results per domain
-        top = []
-        dom_counts = {}
-        for sim, r in scored:
-            domain = urlparse(r["url"]).netloc.lower().lstrip("www.")
-            root_domain = ".".join(domain.split(".")[-2:])  # e.g. python.org
-            if dom_counts.get(root_domain, 0) >= 2:
-                continue
-            top.append(r)
-            dom_counts[root_domain] = dom_counts.get(root_domain, 0) + 1
-            if len(top) >= max_results:
-                break
+        top = [r for _, r in scored[:max_results]]
 
         print(f"[SEARCH] merged {len(all_results)} unique, returning top {len(top)} after embedding re-rank",
               file=sys.stderr, flush=True)
@@ -760,6 +751,7 @@ class SearchEngine:
 
         has_cjk = bool(re.search(r'[一-鿿㐀-䶿]', query))
         mkt_suffix = "" if has_cjk else "&ensearch=1"
+        search_lang = "zh-CN,zh;q=0.9,en;q=0.8" if has_cjk else "en-US,en;q=0.9"
 
         # 3 pages of the original query (no rewriting — LLM decides what to search)
         backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
@@ -777,7 +769,8 @@ class SearchEngine:
             path = path_fn(query)
             try:
                 print(f"[SEARCH] trying {host}{path}", file=sys.stderr, flush=True)
-                resp, body = self._http_get(host, path, timeout=5, follow_redirects=follow, port=port)
+                resp, body = self._http_get(host, path, timeout=5, follow_redirects=follow, port=port,
+                                            accept_language=search_lang)
                 html = body.decode("utf-8", errors="replace")
                 return host, html, parse_fn, None
             except Exception as e:
@@ -816,7 +809,7 @@ class SearchEngine:
         self._search_fail_count = 0
 
         # Fetch full page content before embedding re-rank
-        self._fetch_all_content(all_results, max_fetch=max_results)
+        self._fetch_all_content(all_results, max_fetch=max_results, accept_language=search_lang)
 
         top = self._embedding_rerank(query, all_results, max_results)
 
@@ -851,7 +844,7 @@ class SearchEngine:
 
             extracted = trafilatura.extract(
                 text, include_comments=False, include_tables=True,
-                include_images=False, include_links=False, output_format="txt",
+                include_images=False, include_links=False, output_format="markdown",
             )
             if extracted:
                 text = extracted
