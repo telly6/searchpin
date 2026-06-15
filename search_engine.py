@@ -205,6 +205,30 @@ class SearchEngine:
 
     # ── HTTP ────────────────────────────────────────────────
 
+    @staticmethod
+    def _accept_language(query_text):
+        """Return Accept-Language header based on query content, not a hardcoded constant.
+
+        cn.bing.com uses Accept-Language to decide tokenization strategy:
+        zh-CN triggers single-character dictionary segmentation (harmful for
+        mixed-script brand names like 特斯拉→特/斯拉→dictionary trap).
+        en-US avoids the dictionary trap but can return generic Baike filler
+        for pure-Chinese queries.
+
+        Heuristic: two conditions must both be met to trigger en-US:
+        1. ≥5 Latin letters (filters out short acronyms like NBA, SU7, API
+           that cn.bing.com handles fine in zh-CN mode).
+        2. Latin density >18% of total chars (filters out Chinese-dominant
+           queries with incidental English like "小米汽车SU7交付量").
+        Otherwise zh-CN.
+        """
+        if not query_text:
+            return "zh-CN,zh;q=0.9,en;q=0.5"
+        latin = sum(1 for ch in query_text if ch.isascii() and ch.isalpha())
+        if latin >= 5 and latin / len(query_text) > 0.18:
+            return "en-US,en;q=0.9,zh-CN;q=0.5"
+        return "zh-CN,zh;q=0.9,en;q=0.5"
+
     def _http_get(self, host, path="/", port=443, timeout=15,
                   follow_redirects=False, max_redirects=3,
                   cookies=None, extra_headers=None, force_doh=False):
@@ -795,7 +819,10 @@ class SearchEngine:
             path = path_fn(query)
             try:
                 print(f"[SEARCH] trying {host}{path}", file=sys.stderr, flush=True)
-                resp, body = self._http_get(host, path, timeout=5, follow_redirects=follow, port=port)
+                extra = {"Accept-Language": self._accept_language(query)}
+                resp, body = self._http_get(host, path, timeout=5,
+                                            follow_redirects=follow, port=port,
+                                            extra_headers=extra)
                 html = body.decode("utf-8", errors="replace")
                 return host, html, parse_fn, None
             except Exception as e:
