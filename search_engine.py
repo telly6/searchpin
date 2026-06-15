@@ -5,6 +5,7 @@ Provides web_search + web_fetch via a clean Python API.
 Zero external API keys required.
 """
 
+import gzip
 import http.client
 import json
 import os
@@ -13,6 +14,7 @@ import shutil
 import socket
 import ssl
 import sys
+import zlib
 import tarfile
 import threading
 import time
@@ -230,9 +232,21 @@ class SearchEngine:
 
             _headers = {
                 "Host": host,
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-                "Accept": "text/html,application/json,*/*",
-                "Accept-Language": "en-US,en;q=0.9",
+                "User-Agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/143.0.0.0 Safari/537.36"
+                ),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+                "DNT": "1",
+                "Referer": f"https://{host}/",
             }
             if _jar:
                 _headers["Cookie"] = _jar
@@ -279,6 +293,21 @@ class SearchEngine:
                 continue
 
             body = resp.read()
+            # Decompress if server sent compressed response
+            content_encoding = resp.headers.get("Content-Encoding", "")
+            if content_encoding:
+                encodings = [e.strip() for e in content_encoding.lower().split(",")]
+                for enc in reversed(encodings):  # outermost last
+                    if enc == "gzip":
+                        body = gzip.decompress(body)
+                    elif enc == "deflate":
+                        body = zlib.decompress(body)
+                    elif enc == "br":
+                        try:
+                            import brotli
+                            body = brotli.decompress(body)
+                        except ImportError:
+                            pass  # fall through, hope it's actually uncompressed
             conn.close()
             return resp, body
 
