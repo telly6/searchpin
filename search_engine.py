@@ -613,9 +613,11 @@ class SearchEngine:
         print(f"[SEARCH] fetched fulltext for {fetched}/{len(to_fetch)} pages",
               file=sys.stderr, flush=True)
 
-    def _embedding_rerank(self, query, all_results, max_results):
+    def _embedding_rerank(self, query, all_results):
         """Re-rank results by embedding cosine similarity to the query.
-        Also performs semantic dedup using the same embedding batch."""
+        Also performs semantic dedup using the same embedding batch.
+        Returns all deduped results, sorted by relevance — no truncation.
+        LLM decides how far to read."""
         if not all_results:
             return []
 
@@ -635,9 +637,9 @@ class SearchEngine:
 
         scored.sort(key=lambda x: x[0], reverse=True)
 
-        top = [r for _, r in scored[:max_results]]
+        top = [r for _, r in scored]
 
-        print(f"[SEARCH] merged {len(all_results)} unique, returning top {len(top)} after embedding re-rank",
+        print(f"[SEARCH] deduped & reranked {len(top)} results (no truncation)",
               file=sys.stderr, flush=True)
         return top
 
@@ -671,18 +673,18 @@ class SearchEngine:
         backends = []
 
         def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}{mkt_suffix}{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15{mkt_suffix}{freshness_suffix}"
 
         def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=11{mkt_suffix}{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{mkt_suffix}{freshness_suffix}"
 
         def _bing_page3_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count={max_results}&first=21{mkt_suffix}{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{mkt_suffix}{freshness_suffix}"
 
         def _bing_parse(html):
             results = []
             blocks = re.findall(r'<li[^>]*class="[^"]*b_algo[^"]*"[^>]*>(.*?)</li>', html, re.DOTALL)
-            for blk in blocks[:max_results]:
+            for blk in blocks:
                 h2_m = re.search(r'<h2[^>]*>\s*<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>', blk, re.DOTALL)
                 if not h2_m:
                     continue
@@ -742,7 +744,7 @@ class SearchEngine:
                     if not title or len(title) < 4:
                         continue
                     results.append({"title": title, "url": url, "snippet": ""})
-                    if len(results) >= max_results:
+                    if len(results) >= 15:
                         break
                 if results:
                     print(f"[SEARCH] fallback found {len(results)} links", file=sys.stderr, flush=True)
@@ -809,9 +811,9 @@ class SearchEngine:
         self._search_fail_count = 0
 
         # Fetch full page content before embedding re-rank
-        self._fetch_all_content(all_results, max_fetch=max_results, accept_language=search_lang)
+        self._fetch_all_content(all_results, max_fetch=20, accept_language=search_lang)
 
-        top = self._embedding_rerank(query, all_results, max_results)
+        top = self._embedding_rerank(query, all_results)
 
         return {"results": top, "query": query, "backend": "bing"}
     # ── Web fetch ───────────────────────────────────────────
