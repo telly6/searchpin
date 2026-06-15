@@ -720,11 +720,19 @@ class SearchEngine:
         if freshness in ("d", "w", "m", "y"):
             freshness_suffix = f"&tbs=qdr:{freshness}"
 
-        # ── Market suffix (cn.bing.com supports mkt param) ─────
+        # ── Index mode (cn.bing.com serves two index pools) ───
+        # ensearch=1 tells cn.bing.com to use its global index
+        # instead of the Chinese-only partition.  Without this,
+        # pure-English queries return only Chinese-language
+        # sources and obscure topics like Heroes of the Storm
+        # are completely absent from the index.
+        _index_suffix = "&ensearch=1"
+
+        # ── Market suffix (within the global index pool) ──────
         # When Accept-Language says en-US, also set mkt=en-US so
-        # cn.bing.com serves its English-aware index instead of
-        # the Chinese-only portal (which returns garbage for
-        # mixed-script brand queries like "特斯拉 Model 3").
+        # the ranking and language preference tilt toward English
+        # sources.  This fixes mixed-script brand queries like
+        # "特斯拉 Model 3" that need English-aware tokenization.
         _market_suffix = ""
         if self._accept_language(query).startswith("en-US"):
             _market_suffix = "&mkt=en-US&setlang=en-us"
@@ -733,13 +741,13 @@ class SearchEngine:
         backends = []
 
         def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_index_suffix}{_market_suffix}"
 
         def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_index_suffix}{_market_suffix}"
 
         def _bing_page3_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{freshness_suffix}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{freshness_suffix}{_index_suffix}{_market_suffix}"
 
         def _bing_parse(html):
             results = []
