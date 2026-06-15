@@ -720,17 +720,26 @@ class SearchEngine:
         if freshness in ("d", "w", "m", "y"):
             freshness_suffix = f"&tbs=qdr:{freshness}"
 
+        # ── Market suffix (cn.bing.com supports mkt param) ─────
+        # When Accept-Language says en-US, also set mkt=en-US so
+        # cn.bing.com serves its English-aware index instead of
+        # the Chinese-only portal (which returns garbage for
+        # mixed-script brand queries like "特斯拉 Model 3").
+        _market_suffix = ""
+        if self._accept_language(query).startswith("en-US"):
+            _market_suffix = "&mkt=en-US&setlang=en-us"
+
         # ── Backend registry ───────────────────────────────────
         backends = []
 
         def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_market_suffix}"
 
         def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_market_suffix}"
 
         def _bing_page3_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{freshness_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{freshness_suffix}{_market_suffix}"
 
         def _bing_parse(html):
             results = []
