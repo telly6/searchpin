@@ -722,13 +722,18 @@ class SearchEngine:
 
         # ── Index mode (cn.bing.com serves two index pools) ───
         # ensearch=1 tells cn.bing.com to use its global index
-        # instead of the Chinese-only partition.  Without this,
-        # pure-English queries return only Chinese-language
-        # sources and obscure topics like Heroes of the Storm
-        # are completely absent from the index.
-        _index_suffix = "&ensearch=1"
+        # instead of the Chinese-only partition.  Neither pool
+        # is sufficient alone:
+        #   Chinese-local pool: best for 高考, 高铁, NBA — misses
+        #     English tech docs, mixed-brand details.
+        #   Global pool: best for pure English, 新质生产力, 比亚迪 —
+        #     can't find 高考, 高铁, NBA at all (returns FIFA
+        #     World Cup, 南极磷虾, etc. for Chinese queries).
+        # The solution: fetch BOTH pools in parallel and let
+        # dedup + embedding rerank merge them.
+        _index_suffix_global = "&ensearch=1"
 
-        # ── Market suffix (within the global index pool) ──────
+        # ── Market suffix (within either index pool) ──────────
         # When Accept-Language says en-US, also set mkt=en-US so
         # the ranking and language preference tilt toward English
         # sources.  This fixes mixed-script brand queries like
@@ -738,16 +743,20 @@ class SearchEngine:
             _market_suffix = "&mkt=en-US&setlang=en-us"
 
         # ── Backend registry ───────────────────────────────────
+        # Two index pools × 2 pages each = 4 backends.
+        # The existing dedup removes exact URL matches between
+        # pools; embedding rerank then sorts the union by relevance.
         backends = []
 
-        def _bing_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_index_suffix}{_market_suffix}"
+        def _cn_p1(q):
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_market_suffix}"
+        def _cn_p2(q):
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_market_suffix}"
 
-        def _bing_page2_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_index_suffix}{_market_suffix}"
-
-        def _bing_page3_path(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=31{freshness_suffix}{_index_suffix}{_market_suffix}"
+        def _global_p1(q):
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_index_suffix_global}{_market_suffix}"
+        def _global_p2(q):
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_index_suffix_global}{_market_suffix}"
 
         def _bing_parse(html):
             results = []
@@ -820,10 +829,17 @@ class SearchEngine:
             return results
 
 
-        # 3 pages of the original query (no rewriting — LLM decides what to search)
-        backends.append(("cn.bing.com", _bing_path, _bing_parse, False, 443))
-        backends.append(("cn.bing.com", _bing_page2_path, _bing_parse, False, 443))
-        backends.append(("cn.bing.com", _bing_page3_path, _bing_parse, False, 443))
+        # 2 pools × 2 pages = 4 backends total.
+        # Chinese-local pool: 高考, 高铁, NBA, 延迟退休 — content
+        #   only indexed in the Chinese partition.
+        # Global pool (ensearch=1): pure English tech docs,
+        #   新质生产力 policy articles, brand-name details that
+        #   the Chinese pool tokenizes incorrectly.
+        # Both pools run in parallel; dedup merges overlapping URLs.
+        backends.append(("cn.bing.com", _cn_p1, _bing_parse, False, 443))
+        backends.append(("cn.bing.com", _cn_p2, _bing_parse, False, 443))
+        backends.append(("cn.bing.com", _global_p1, _bing_parse, False, 443))
+        backends.append(("cn.bing.com", _global_p2, _bing_parse, False, 443))
 
         # ── Parallel fetch, merge, deduplicate ──
         from concurrent.futures import ThreadPoolExecutor, as_completed
