@@ -714,6 +714,7 @@ class SearchEngine:
         scored = []
         for i, r in enumerate(all_results):
             sim = self._cosine_similarity(query_vec, doc_vecs[i])
+            r["_rerank_score"] = float(sim)
             scored.append((sim, r))
 
         scored.sort(key=lambda x: x[0], reverse=True)
@@ -945,18 +946,47 @@ class SearchEngine:
         cn_ranked = self._embedding_rerank(query, pool_results["cn"])
         en_ranked = self._embedding_rerank(query, pool_results["en"])
 
-        # ── Interleave: take turns from each pool ──
-        interleaved = []
-        i, j = 0, 0
-        while i < len(cn_ranked) or j < len(en_ranked):
-            if i < len(cn_ranked):
-                interleaved.append(cn_ranked[i])
-                i += 1
-            if j < len(en_ranked):
-                interleaved.append(en_ranked[j])
-                j += 1
+        # ── Compare pool quality before interleaving ──
+        # When one pool returns mostly noise (e.g. CN pool returns SSD
+        # pages for "固态电池"), its embedding scores will be distinctly
+        # lower than the other pool's.  Detect this and adjust the
+        # interleave ratio so the noisy pool doesn't steal top positions.
+        def _pool_top_score(pool_results, n=3):
+            scores = [r.get("_rerank_score", 0) for r in pool_results[:n] if r.get("_rerank_score")]
+            return sum(scores) / len(scores) if scores else 0
 
-        print(f"[SEARCH] interleaved: cn={len(cn_ranked)} en={len(en_ranked)} → {len(interleaved)} total",
+        cn_avg = _pool_top_score(cn_ranked)
+        en_avg = _pool_top_score(en_ranked)
+        cn_step, en_step = 1, 1  # default 1:1 interleave
+
+        # Determine which pool is stronger and should go first
+        cn_first = True  # default: CN pool leads
+        if cn_avg > 0 and en_avg > 0:
+            if cn_avg < en_avg * 0.6:
+                cn_step, en_step = 1, 3  # CN pool is noise
+                cn_first = False
+            elif en_avg < cn_avg * 0.6:
+                cn_step, en_step = 3, 1  # EN pool is noise
+            # else: 1:1, cn_first stays True (doesn't matter)
+
+        # ── Weighted interleave, stronger pool first ──
+        pool_a, pool_b = (cn_ranked, en_ranked) if cn_first else (en_ranked, cn_ranked)
+        step_a, step_b = (cn_step, en_step) if cn_first else (en_step, cn_step)
+        interleaved = []
+        ia, ib = 0, 0
+        while ia < len(pool_a) or ib < len(pool_b):
+            for _ in range(step_a):
+                if ia < len(pool_a):
+                    interleaved.append(pool_a[ia])
+                    ia += 1
+            for _ in range(step_b):
+                if ib < len(pool_b):
+                    interleaved.append(pool_b[ib])
+                    ib += 1
+
+        print(f"[SEARCH] interleaved: cn={len(cn_ranked)}({cn_avg:.3f}) "
+              f"en={len(en_ranked)}({en_avg:.3f}) "
+              f"ratio={cn_step}:{en_step} → {len(interleaved)} total",
               file=sys.stderr, flush=True)
 
         return {"results": interleaved, "query": query, "backend": "bing"}
