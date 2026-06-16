@@ -867,30 +867,30 @@ class SearchEngine:
         #   新质生产力 policy articles, brand-name details that
         #   the Chinese pool tokenizes incorrectly.
         #
-        # CRITICAL: each pool gets its own Accept-Language.
-        # Chinese-local pool uses _accept_language(query) to preserve
-        #   Chinese coverage for pure-CN queries (高考, 高铁).
-        # Global pool always uses en-US to avoid zh-CN single-character
-        #   dictionary segmentation (特→"特"字典, 长→"长"字典, etc.).
-        #   This is what makes the global pool useful for mixed-script
-        #   brand/medical queries that the Chinese pool mangles.
-        # Both pools run in parallel; dedup merges overlapping URLs.
+        # CRITICAL: each pool gets its own Accept-Language and its own
+        #   independent re-rank.  Merging both pools before the embedding
+        #   step produces cross-pool score contamination — single-char
+        #   dictionary noise from the CN pool (阿→"阿"字典) can outrank
+        #   true medical results from the EN pool (阿尔茨海默病百科).
+        #   The fix: re-rank each pool against the query independently,
+        #   then interleave.  No per-query heuristics needed.
         _cn_accept_lang = self._accept_language(query)
         _en_accept_lang = "en-US,en;q=0.9"
 
-        backends.append(("cn.bing.com", _cn_p1, _bing_parse, False, 443, _cn_accept_lang))
-        backends.append(("cn.bing.com", _cn_p2, _bing_parse, False, 443, _cn_accept_lang))
-        backends.append(("cn.bing.com", _global_p1, _bing_parse, False, 443, _en_accept_lang))
-        backends.append(("cn.bing.com", _global_p2, _bing_parse, False, 443, _en_accept_lang))
+        # Each backend tuple: (host, path_fn, parse_fn, follow, port, accept_lang, pool_tag)
+        backends.append(("cn.bing.com", _cn_p1, _bing_parse, False, 443, _cn_accept_lang, "cn"))
+        backends.append(("cn.bing.com", _cn_p2, _bing_parse, False, 443, _cn_accept_lang, "cn"))
+        backends.append(("cn.bing.com", _global_p1, _bing_parse, False, 443, _en_accept_lang, "en"))
+        backends.append(("cn.bing.com", _global_p2, _bing_parse, False, 443, _en_accept_lang, "en"))
 
-        # ── Parallel fetch, merge, deduplicate ──
+        # ── Parallel fetch, collect into per-pool buckets ──
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        all_results_lock = threading.Lock()
-        all_results = []
-        seen_urls = set()
+        pool_lock = threading.Lock()
+        pool_results = {"cn": [], "en": []}
+        pool_seen = {"cn": set(), "en": set()}
         any_success = [False]
 
-        def _fetch_one(host, path_fn, parse_fn, follow, port, accept_language):
+        def _fetch_one(host, path_fn, parse_fn, follow, port, accept_language, pool_tag):
             path = path_fn(query)
             try:
                 print(f"[SEARCH] trying {host}{path}", file=sys.stderr, flush=True)
@@ -899,31 +899,32 @@ class SearchEngine:
                                             follow_redirects=follow, port=port,
                                             extra_headers=extra)
                 html = body.decode("utf-8", errors="replace")
-                return host, html, parse_fn, None
+                return host, html, parse_fn, None, pool_tag
             except Exception as e:
-                return host, "", None, e
+                return host, "", None, e, pool_tag
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
-            futures = [ex.submit(_fetch_one, h, pf, ps, fw, p, al)
-                       for h, pf, ps, fw, p, al in backends]
+            futures = [ex.submit(_fetch_one, h, pf, ps, fw, p, al, pt)
+                       for h, pf, ps, fw, p, al, pt in backends]
             for fut in as_completed(futures):
-                host, html, parse_fn, err = fut.result()
+                host, html, parse_fn, err, pool_tag = fut.result()
                 if err:
                     print(f"[SEARCH] {host} failed: {err}", file=sys.stderr, flush=True)
                     continue
                 results = parse_fn(html)
                 if results:
-                    with all_results_lock:
+                    with pool_lock:
                         any_success[0] = True
                         for r in results:
                             url_key = r["url"].lower().rstrip("/")
-                            if url_key not in seen_urls:
-                                seen_urls.add(url_key)
-                                all_results.append(r)
-                    print(f"[SEARCH] {host} returned {len(results)} results ({len(all_results)} unique total)",
+                            if url_key not in pool_seen[pool_tag]:
+                                pool_seen[pool_tag].add(url_key)
+                                pool_results[pool_tag].append(r)
+                    print(f"[SEARCH] {host}[{pool_tag}] returned {len(results)} results "
+                          f"({len(pool_results[pool_tag])} unique in pool)",
                           file=sys.stderr, flush=True)
                 else:
-                    print(f"[SEARCH] {host} returned 0 parsed results (HTML {len(html)} bytes)",
+                    print(f"[SEARCH] {host}[{pool_tag}] returned 0 parsed results (HTML {len(html)} bytes)",
                           file=sys.stderr, flush=True)
 
         if not any_success[0]:
@@ -935,12 +936,30 @@ class SearchEngine:
         self._search_cooldown_until = 0
         self._search_fail_count = 0
 
-        # Fetch full page content before embedding re-rank
-        self._fetch_all_content(all_results, max_fetch=20)
+        # ── Per-pool: fulltext fetch + independent embedding re-rank ──
+        cn_fetch_n = min(20, len(pool_results["cn"]))
+        en_fetch_n = min(20, len(pool_results["en"]))
+        self._fetch_all_content(pool_results["cn"], max_fetch=cn_fetch_n)
+        self._fetch_all_content(pool_results["en"], max_fetch=en_fetch_n)
 
-        top = self._embedding_rerank(query, all_results)
+        cn_ranked = self._embedding_rerank(query, pool_results["cn"])
+        en_ranked = self._embedding_rerank(query, pool_results["en"])
 
-        return {"results": top, "query": query, "backend": "bing"}
+        # ── Interleave: take turns from each pool ──
+        interleaved = []
+        i, j = 0, 0
+        while i < len(cn_ranked) or j < len(en_ranked):
+            if i < len(cn_ranked):
+                interleaved.append(cn_ranked[i])
+                i += 1
+            if j < len(en_ranked):
+                interleaved.append(en_ranked[j])
+                j += 1
+
+        print(f"[SEARCH] interleaved: cn={len(cn_ranked)} en={len(en_ranked)} → {len(interleaved)} total",
+              file=sys.stderr, flush=True)
+
+        return {"results": interleaved, "query": query, "backend": "bing"}
     # ── Web fetch ───────────────────────────────────────────
 
     def fetch(self, url, max_length=30000):
