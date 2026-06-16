@@ -937,59 +937,27 @@ class SearchEngine:
         self._search_cooldown_until = 0
         self._search_fail_count = 0
 
-        # ── Per-pool: fulltext fetch + independent embedding re-rank ──
+        # ── Per-pool fulltext fetch ──
         cn_fetch_n = min(20, len(pool_results["cn"]))
         en_fetch_n = min(20, len(pool_results["en"]))
         self._fetch_all_content(pool_results["cn"], max_fetch=cn_fetch_n)
         self._fetch_all_content(pool_results["en"], max_fetch=en_fetch_n)
 
-        cn_ranked = self._embedding_rerank(query, pool_results["cn"])
-        en_ranked = self._embedding_rerank(query, pool_results["en"])
+        # ── Merge both pools, then do ONE global embedding re-rank ──
+        # Per-pool re-rank was a hack that required interleaving heuristics
+        # and ratio tuning — non-general, query-specific.  Instead: merge
+        # all results from both pools and let the embedding model decide
+        # relevance globally.  The multilingual model understands that
+        # 特斯拉=Tesla, 阿尔茨海默=Alzheimer, and 固态硬盘≠固态电池
+        # regardless of which pool the result came from.
+        merged = pool_results["cn"] + pool_results["en"]
+        ranked = self._embedding_rerank(query, merged)
 
-        # ── Compare pool quality before interleaving ──
-        # When one pool returns mostly noise (e.g. CN pool returns SSD
-        # pages for "固态电池"), its embedding scores will be distinctly
-        # lower than the other pool's.  Detect this and adjust the
-        # interleave ratio so the noisy pool doesn't steal top positions.
-        def _pool_top_score(pool_results, n=3):
-            scores = [r.get("_rerank_score", 0) for r in pool_results[:n] if r.get("_rerank_score")]
-            return sum(scores) / len(scores) if scores else 0
-
-        cn_avg = _pool_top_score(cn_ranked)
-        en_avg = _pool_top_score(en_ranked)
-        cn_step, en_step = 1, 1  # default 1:1 interleave
-
-        # Determine which pool is stronger and should go first
-        cn_first = True  # default: CN pool leads
-        if cn_avg > 0 and en_avg > 0:
-            if cn_avg < en_avg * 0.6:
-                cn_step, en_step = 1, 3  # CN pool is noise
-                cn_first = False
-            elif en_avg < cn_avg * 0.6:
-                cn_step, en_step = 3, 1  # EN pool is noise
-            # else: 1:1, cn_first stays True (doesn't matter)
-
-        # ── Weighted interleave, stronger pool first ──
-        pool_a, pool_b = (cn_ranked, en_ranked) if cn_first else (en_ranked, cn_ranked)
-        step_a, step_b = (cn_step, en_step) if cn_first else (en_step, cn_step)
-        interleaved = []
-        ia, ib = 0, 0
-        while ia < len(pool_a) or ib < len(pool_b):
-            for _ in range(step_a):
-                if ia < len(pool_a):
-                    interleaved.append(pool_a[ia])
-                    ia += 1
-            for _ in range(step_b):
-                if ib < len(pool_b):
-                    interleaved.append(pool_b[ib])
-                    ib += 1
-
-        print(f"[SEARCH] interleaved: cn={len(cn_ranked)}({cn_avg:.3f}) "
-              f"en={len(en_ranked)}({en_avg:.3f}) "
-              f"ratio={cn_step}:{en_step} → {len(interleaved)} total",
+        print(f"[SEARCH] merged cn={len(pool_results['cn'])} en={len(pool_results['en'])} "
+              f"→ {len(ranked)} after global re-rank",
               file=sys.stderr, flush=True)
 
-        return {"results": interleaved, "query": query, "backend": "bing"}
+        return {"results": ranked, "query": query, "backend": "bing"}
     # ── Web fetch ───────────────────────────────────────────
 
     def fetch(self, url, max_length=30000):
