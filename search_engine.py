@@ -618,14 +618,29 @@ class SearchEngine:
 
     def _fetch_all_content(self, all_results, max_fetch=10):
         """Fetch full page content for each result concurrently.
-        Stores extracted text in result['fulltext']. Falls back to snippet
-        on any fetch failure — always leaves 'fulltext' non-empty."""
+
+        Extraction pipeline (tries in order, picks first good result):
+        1. trafilatura → structured markdown (best: clean article text)
+        2. HTML text-strip → strip all tags, keep raw text nodes (good:
+           ~2,000-5,000 chars of page vocabulary for embedding. Far better
+           signal than title+snippet for the re-ranker when trafilatura fails
+           on JS-heavy or non-article pages.)
+        3. title + snippet (bare minimum, always non-empty)
+        """
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         if not all_results:
             return
 
         to_fetch = all_results[:max_fetch]
+
+        def _strip_html(html):
+            """Strip all HTML tags, collapse whitespace, keep text nodes."""
+            text = re.sub(r'<script[^>]*>.*?</script>', ' ', html, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r'<style[^>]*>.*?</style>', ' ', text, flags=re.DOTALL | re.IGNORECASE)
+            text = re.sub(r'<[^>]+>', ' ', text)
+            text = re.sub(r'\s+', ' ', text)
+            return text.strip()[:3000]
 
         def _fetch_one(r):
             try:
@@ -643,25 +658,40 @@ class SearchEngine:
                 if "charset=" in ct:
                     charset = ct.split("charset=")[-1].split(";")[0].strip()
                 html = body.decode(charset, errors="replace")
+
+                # 1. trafilatura
                 extracted = trafilatura.extract(
                     html, include_comments=False, include_tables=True,
                     include_images=False, include_links=False, output_format="markdown",
                 )
                 if extracted and len(extracted) > 100:
                     r["fulltext"] = extracted
-                else:
-                    r["fulltext"] = f"{r.get('title', '')} {r.get('snippet', '')}"
+                    r["_ft_source"] = "trafilatura"
+                    return
+
+                # 2. HTML text-strip (5-10× more signal than title+snippet)
+                stripped = _strip_html(html)
+                if stripped and len(stripped) > 100:
+                    r["fulltext"] = stripped
+                    r["_ft_source"] = "html-strip"
+                    return
+
+                # 3. bare minimum
+                r["fulltext"] = f"{r.get('title', '')} {r.get('snippet', '')}"
+                r["_ft_source"] = "fallback"
             except Exception:
                 r["fulltext"] = f"{r.get('title', '')} {r.get('snippet', '')}"
+                r["_ft_source"] = "error"
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
             futures = [ex.submit(_fetch_one, r) for r in to_fetch]
             for fut in as_completed(futures):
                 pass  # results stored in-place
 
-        fetched = sum(1 for r in to_fetch
-                      if len(r.get("fulltext", "")) > len(f"{r.get('title','')} {r.get('snippet','')}"))
-        print(f"[SEARCH] fetched fulltext for {fetched}/{len(to_fetch)} pages",
+        traf_count = sum(1 for r in to_fetch if r.get("_ft_source") == "trafilatura")
+        strip_count = sum(1 for r in to_fetch if r.get("_ft_source") == "html-strip")
+        fb_count = sum(1 for r in to_fetch if r.get("_ft_source") in ("fallback", "error"))
+        print(f"[SEARCH] fulltext: trafilatura={traf_count} html-strip={strip_count} fallback={fb_count}/{len(to_fetch)} pages",
               file=sys.stderr, flush=True)
 
     def _embedding_rerank(self, query, all_results):
@@ -733,14 +763,15 @@ class SearchEngine:
         # dedup + embedding rerank merge them.
         _index_suffix_global = "&ensearch=1"
 
-        # ── Market suffix (within either index pool) ──────────
-        # When Accept-Language says en-US, also set mkt=en-US so
-        # the ranking and language preference tilt toward English
-        # sources.  This fixes mixed-script brand queries like
-        # "特斯拉 Model 3" that need English-aware tokenization.
-        _market_suffix = ""
+        # ── Market suffix ─────────────────────────────────────
+        # Chinese-local pool: only add mkt=en-US when the query is
+        # English-dominant (protects pure-CN ranking for 高考/高铁).
+        # Global pool: always mkt=en-US — the pool runs on
+        # en-US Accept-Language and needs aligned ranking signals.
+        _cn_market = ""
         if self._accept_language(query).startswith("en-US"):
-            _market_suffix = "&mkt=en-US&setlang=en-us"
+            _cn_market = "&mkt=en-US&setlang=en-us"
+        _global_market = "&mkt=en-US&setlang=en-us"
 
         # ── Backend registry ───────────────────────────────────
         # Two index pools × 2 pages each = 4 backends.
@@ -749,14 +780,14 @@ class SearchEngine:
         backends = []
 
         def _cn_p1(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_cn_market}"
         def _cn_p2(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_cn_market}"
 
         def _global_p1(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_index_suffix_global}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15{freshness_suffix}{_index_suffix_global}{_global_market}"
         def _global_p2(q):
-            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_index_suffix_global}{_market_suffix}"
+            return f"/search?q={urllib.parse.quote(q)}&count=15&first=16{freshness_suffix}{_index_suffix_global}{_global_market}"
 
         def _bing_parse(html):
             results = []
@@ -835,11 +866,22 @@ class SearchEngine:
         # Global pool (ensearch=1): pure English tech docs,
         #   新质生产力 policy articles, brand-name details that
         #   the Chinese pool tokenizes incorrectly.
+        #
+        # CRITICAL: each pool gets its own Accept-Language.
+        # Chinese-local pool uses _accept_language(query) to preserve
+        #   Chinese coverage for pure-CN queries (高考, 高铁).
+        # Global pool always uses en-US to avoid zh-CN single-character
+        #   dictionary segmentation (特→"特"字典, 长→"长"字典, etc.).
+        #   This is what makes the global pool useful for mixed-script
+        #   brand/medical queries that the Chinese pool mangles.
         # Both pools run in parallel; dedup merges overlapping URLs.
-        backends.append(("cn.bing.com", _cn_p1, _bing_parse, False, 443))
-        backends.append(("cn.bing.com", _cn_p2, _bing_parse, False, 443))
-        backends.append(("cn.bing.com", _global_p1, _bing_parse, False, 443))
-        backends.append(("cn.bing.com", _global_p2, _bing_parse, False, 443))
+        _cn_accept_lang = self._accept_language(query)
+        _en_accept_lang = "en-US,en;q=0.9"
+
+        backends.append(("cn.bing.com", _cn_p1, _bing_parse, False, 443, _cn_accept_lang))
+        backends.append(("cn.bing.com", _cn_p2, _bing_parse, False, 443, _cn_accept_lang))
+        backends.append(("cn.bing.com", _global_p1, _bing_parse, False, 443, _en_accept_lang))
+        backends.append(("cn.bing.com", _global_p2, _bing_parse, False, 443, _en_accept_lang))
 
         # ── Parallel fetch, merge, deduplicate ──
         from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -848,11 +890,11 @@ class SearchEngine:
         seen_urls = set()
         any_success = [False]
 
-        def _fetch_one(host, path_fn, parse_fn, follow, port):
+        def _fetch_one(host, path_fn, parse_fn, follow, port, accept_language):
             path = path_fn(query)
             try:
                 print(f"[SEARCH] trying {host}{path}", file=sys.stderr, flush=True)
-                extra = {"Accept-Language": self._accept_language(query)}
+                extra = {"Accept-Language": accept_language}
                 resp, body = self._http_get(host, path, timeout=5,
                                             follow_redirects=follow, port=port,
                                             extra_headers=extra)
@@ -862,8 +904,8 @@ class SearchEngine:
                 return host, "", None, e
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
-            futures = [ex.submit(_fetch_one, h, pf, ps, fw, p)
-                       for h, pf, ps, fw, p in backends]
+            futures = [ex.submit(_fetch_one, h, pf, ps, fw, p, al)
+                       for h, pf, ps, fw, p, al in backends]
             for fut in as_completed(futures):
                 host, html, parse_fn, err = fut.result()
                 if err:
