@@ -1,0 +1,295 @@
+{
+  "scenario": {
+    "name": "场景2_ClaudeOpus",
+    "title": "Claude Opus 5 / Fable 5 AI模型发布"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "query": "Claude Opus 5 Anthropic latest model",
+      "total_s": 6.48,
+      "search_s": 4.35,
+      "rerank_s": 2.12,
+      "merged": 19,
+      "engines": {
+        "www.baidu.com": 4,
+        "www.sogou.com": 4,
+        "cn.bing.com": 2
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.963,
+          "title": "Claude Opus 5 Anthropic latest model的最新相关信息",
+          "url": "https://www.php.cn/faq/2630042.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.858,
+          "title": "Claude Opus \\ Anthropic",
+          "url": "https://www.anthropic.com/claude/opus",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 3,
+          "rerank": 0.846,
+          "title": "Claude Opus 4.5 深度解构:当AI 学会了“拒绝道歉”与“痛恨列表” -...",
+          "url": "https://www.cnblogs.com/swizard/p/19312404",
+          "engine": "www.sogou.com",
+          "snippet": "Anthropic 最新旗舰模型的技术底座,更令人震惊的是,它彻底颠覆了我们对 ... (Model String) 定位与特点 Claude Opus 4.5 claude-opus-4-5-20251101 旗舰..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.815,
+          "title": "Best AI Models for Claude Max",
+          "url": "https://sourceforge.net/software/ai-models/integrates-with-claude-max/",
+          "engine": "www.sogou.com",
+          "snippet": "3.5 operates at twice the speed of Claude Opus 3. This performance boost, combined with... 4.7 Anthropic Claude Opus 4.7 is the latest Anthropic AI model release designed to ..."
+        },
+        {
+          "rank": 5,
+          "rerank": 0.812,
+          "title": "Home \\ Anthropic",
+          "url": "https://www.anthropic.com/",
+          "engine": "cn.bing.com",
+          "snippet": "4 天之前 · Claude Opus 4.8 An upgrade to Opus across coding, agentic tasks, and professional work, with the consistency to handle long-running work."
+        },
+        {
+          "rank": 6,
+          "rerank": 0.811,
+          "title": "刚刚,Anthropic首个神话级Claude 5正式解禁!",
+          "url": "https://cloud.tencent.com/developer/article/2690656",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 7,
+          "rerank": 0.809,
+          "title": "Claude 中文版：Claude 4.5 国内使用指南～（支持 Claude ...",
+          "url": "https://www.claudezh.com/claude/claude-chinese.html",
+          "engine": "cn.bing.com",
+          "snippet": "9 小时之前 · Claude 是Anthropic最新发布的AI模型，具备顶尖的推理能力和多模态理解。立即访问Claude中文镜像站体验。"
+        },
+        {
+          "rank": 8,
+          "rerank": 0.808,
+          "title": "Claude Opus 4 Reviews in 2026",
+          "url": "https://sourceforge.net/software/product/Claude-Opus-4/",
+          "engine": "www.sogou.com",
+          "snippet": "Claude Opus 4 represents a revolutionary leap in AI model performance, setting ... Claude Sonnet 4, the latest evolution of Anthropic's language models, offers a ..."
+        },
+        {
+          "rank": 9,
+          "rerank": 0.802,
+          "title": "仅仅间隔11天,Anthropic发布新一代通用大模型Claude Fable 5",
+          "url": "https://zhuanlan.zhihu.com/p/2047968995517657097",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 10,
+          "rerank": 0.783,
+          "title": "...use-demo/README.md at main · anthropics/claude-quickstarts · ...",
+          "url": "https://github.com/anthropics/anthropic-quickstarts/blob/main/computer-use-demo/README.md",
+          "engine": "www.sogou.com",
+          "snippet": "(claude-opus-4-8), the latest model, with adaptive thinking — the model decides ... and Claude 3.5 Sonnet models Anthropic-defined computer use tools A ..."
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "query": "Anthropic Claude Opus release benchmark 2026",
+      "total_s": 5.96,
+      "search_s": 4.36,
+      "rerank_s": 1.6,
+      "merged": 15,
+      "engines": {
+        "www.sogou.com": 4,
+        "cn.bing.com": 6
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.802,
+          "title": "GitHub - anthropics/original_performance_takehome: Anthropic's ...",
+          "url": "https://github.com/anthropics/original_performance_takehome",
+          "engine": "www.sogou.com",
+          "snippet": "2026 View all files Repository files navigation Anthropic's Original Performance ... Claude Opus 4 after many hours in the test-time compute harness 1790 cycles : ..."
+        },
+        {
+          "rank": 2,
+          "rerank": 0.778,
+          "title": "Claude（Anthropic发布的大型语言模型）_百度百科",
+          "url": "https://baike.baidu.com/item/Claude/62812102",
+          "engine": "cn.bing.com",
+          "snippet": "Claude是由美国人工智能公司Anthropic开发的大型语言模型家族，2023年3月15日发布初代版本，创始团队包含OpenAI前核心成员及GPT-3开发人员。 该模型采用Constitutional AI训练方法，支持多模态处 …"
+        },
+        {
+          "rank": 3,
+          "rerank": 0.775,
+          "title": "一年狂揽73亿美元投资 Anthropic引燃大模型战火_Claude_Opus_...",
+          "url": "https://www.sohu.com/a/762385916_114986",
+          "engine": "www.sogou.com",
+          "snippet": "据Anthropic官方发布的跑分结果，Claude 3 Opus在本科级别专业知识（MMLU）、研究生级别专家推理（GPQA）、基础数学（GSM8K）等领域都超过了GPT-4..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.738,
+          "title": "ANTHROPIC进展追踪：超越GPT-4的表现 CLAUDE 3有多强？__新浪...",
+          "url": "http://stock.finance.sina.com.cn/stock/go.php/vReport_Show/kind/lastest/rptid/763161459977/index.phtml",
+          "engine": "www.sogou.com",
+          "snippet": "ANTHROPIC进展追踪：超越GPT-4的表现 CLAUDE 3有多强？"
+        },
+        {
+          "rank": 5,
+          "rerank": 0.725,
+          "title": "全球AI新王诞生，Anthropic估值冲爆1.2万亿，首次反超 ...",
+          "url": "https://www.36kr.com/p/3799097984080899",
+          "engine": "cn.bing.com",
+          "snippet": "2026年5月7日 · Anthropic——这个曾经一直笼罩在OpenAI阴影下的「二号选手」，在链上Pre-IPO市场的隐含估值瞬间飙升至 1.2万亿美元 （约合人民币8.7万亿元）。"
+        },
+        {
+          "rank": 6,
+          "rerank": 0.721,
+          "title": "GitHub - anthropics/anthropic-sdk-python · GitHub",
+          "url": "https://github.com/anthropics/anthropic-sdk-python",
+          "engine": "www.sogou.com",
+          "snippet": "release-please-manifest.json .release-please-manifest.json     .stats.yml .... model = ＂claude-opus-4-6＂ ,) print ( message . content ) Requirements Python..."
+        },
+        {
+          "rank": 7,
+          "rerank": 0.719,
+          "title": "The AI for Problem Solvers | Claude by Anthropic",
+          "url": "https://claude.com/product/overview",
+          "engine": "cn.bing.com",
+          "snippet": "3 天之前 · Claude is Anthropic's AI, built for problem solvers. Tackle complex challenges, analyze data, write code, and think through your hardest work."
+        },
+        {
+          "rank": 8,
+          "rerank": 0.718,
+          "title": "Anthropic（美国人工智能股份有限公司）_百度百科",
+          "url": "https://baike.baidu.com/item/Anthropic/62639515",
+          "engine": "cn.bing.com",
+          "snippet": "2026年2月5日 · Anthropic是一家位于美国加州旧金山的人工智能股份有限公司，成立于2021年，致力于构建可靠、可解释和可操纵的AI系统。 该公司由达里奥·阿莫迪 和丹妮拉·阿莫迪兄妹创立，现任首席 …"
+        },
+        {
+          "rank": 9,
+          "rerank": 0.712,
+          "title": "每天了解一家大模型公司（国外篇）：Anthropic - 知乎",
+          "url": "https://zhuanlan.zhihu.com/p/13568558856",
+          "engine": "cn.bing.com",
+          "snippet": "2024年12月19日 · 2021年，他们与另外 5 名 OpenAI 成员，包括GPT-3模型的主要开发者Tom Brown，一同创立了Anthropic，旨在构建可靠的（Reliable）、可解释的（Interpretable）和可操控 …"
+        },
+        {
+          "rank": 10,
+          "rerank": 0.705,
+          "title": "领先一个身位，Anthropic正式启动IPO进程 - 虎嗅网",
+          "url": "https://www.huxiu.com/article/4863841.html",
+          "engine": "cn.bing.com",
+          "snippet": "2026年上半年，Anthropic的发展可谓是气势如虹。 今年2月，Anthropic完成G轮约300亿美元的融资，投后估值3800亿美元。 5月28日，Anthropic又完成了650亿美元的融资。 这次AI史上的最大规模融资 …"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "query": "Claude Fable 5 Anthropic model",
+      "total_s": 6.25,
+      "search_s": 4.46,
+      "rerank_s": 1.79,
+      "merged": 17,
+      "engines": {
+        "www.baidu.com": 4,
+        "www.sogou.com": 4,
+        "cn.bing.com": 2
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.924,
+          "title": "Claude Fable 5 发布,这是 Anthropic 最强的模型,你现在就能用...",
+          "url": "https://blog.csdn.net/chen_si_shang_/article/details/161935399",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.921,
+          "title": "Claude Fable 5登场,Anthropic把“危险的好东西”拿出来卖了",
+          "url": "https://blog.csdn.net/qq_36729037/article/details/162015681",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 3,
+          "rerank": 0.888,
+          "title": "Claude Fable 5深度解析:Anthropic旗舰模型的技术架构、自适应推理...",
+          "url": "https://blog.csdn.net/nmdbbzcl/article/details/161870199",
+          "engine": "www.sogou.com",
+          "snippet": "Anthropic发布了Claude Fable 5与Claude Mythos 5,这是Anthropic首次推出\"Mythos级\"模型——其最强能力等级的代名词。Claude Fable 5是Mythos 5的安全..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.872,
+          "title": "Claude Fable 5 - 百度百科",
+          "url": "https://cloud.tencent.com/developer/article/2690656",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 5,
+          "rerank": 0.842,
+          "title": "Anthropic 恰乌里称有信心“未来几天”重新开放 Mythos 及Fable 5 AI ...",
+          "url": "https://finance.sina.com.cn/tech/digi/2026-06-20/doc-iniczhua2171168.shtml",
+          "engine": "www.sogou.com",
+          "snippet": "Claude Fable 5 模型。 IT之家此前报道，由于美国白宫安全指令，Anthropic 临时封锁了其前沿模型 Mythos 和Fable 5 的访问权限。恰乌里在首尔新闻发布会上..."
+        },
+        {
+          "rank": 6,
+          "rerank": 0.806,
+          "title": "Fable 5“复活”疑云背后：AI狂飙突进,刹车何时能造好？_模型_公...",
+          "url": "https://www.sohu.com/a/1039591645_362225",
+          "engine": "www.sogou.com",
+          "snippet": "在对话框中输入“/model claude-fable-5”，即可看到该模型重新“现身”。这一... Fable 5的突然下线与潜在回归，与Anthropic公司对AI安全性的深刻思考密切相关..."
+        },
+        {
+          "rank": 7,
+          "rerank": 0.783,
+          "title": "Claude深夜炸场!放出史上最强「危险级」模型Fable 5,价格太逆天",
+          "url": "https://zhuanlan.zhihu.com/p/2047990880032892716",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 8,
+          "rerank": 0.779,
+          "title": "Claude5受限 国产大模型替代窗口打开- CFi.CN 中财网",
+          "url": "https://fund.cfi.cn/p20260622000339.html",
+          "engine": "www.sogou.com",
+          "snippet": "中财网讯：最新机构研报显示，美国出口管制政策导致Anthropic的Claude Fable 5模型暂停服务，这一事件凸显了单纯依赖境外AI技术的供应链风险，国产开源大模型迎来明显替代..."
+        },
+        {
+          "rank": 9,
+          "rerank": 0.767,
+          "title": "Claude 中文版：Claude 4.5 国内使用指南～（支持 Claude ...",
+          "url": "https://www.claudezh.com/claude/claude-chinese.html",
+          "engine": "cn.bing.com",
+          "snippet": "9 小时之前 · Claude 是Anthropic最新发布的AI模型，具备顶尖的推理能力和多模态理解。立即访问Claude中文镜像站体验。"
+        },
+        {
+          "rank": 10,
+          "rerank": 0.734,
+          "title": "Claude（Anthropic发布的大型语言模型）_百度百科",
+          "url": "https://baike.baidu.com/item/Claude/62812102",
+          "engine": "cn.bing.com",
+          "snippet": "2024年3月发布Claude 3系列包含Opus、Sonnet和Haiku三个子模型，其中Opus在本科/研究生知识、数学等领域基准测试中表现优于GPT-4和Gemini 1.0 Ultra，支持百万Token上下文处理。 2024年10月 …"
+        }
+      ]
+    }
+  ]
+}

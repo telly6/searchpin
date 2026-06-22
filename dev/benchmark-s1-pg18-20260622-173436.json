@@ -1,0 +1,296 @@
+{
+  "scenario": {
+    "name": "场景1_PostgreSQL18",
+    "title": "PostgreSQL 18 数据库新版本"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "query": "PostgreSQL 18 release notes new features",
+      "total_s": 12.36,
+      "search_s": 8.18,
+      "rerank_s": 4.18,
+      "merged": 25,
+      "engines": {
+        "www.sogou.com": 3,
+        "www.baidu.com": 2,
+        "cn.bing.com": 5
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.85,
+          "title": "PostgreSQL: Release Notes",
+          "url": "https://www.postgresql.org/docs/release/18.0/",
+          "engine": "www.sogou.com",
+          "snippet": "The above items and other new features of PostgreSQL 18 are explained in more detail in the sections below. E.5.2. Migration to Version 18 # A dump/restore using pg_dumpall or use of pg_upgrade or log"
+        },
+        {
+          "rank": 2,
+          "rerank": 0.849,
+          "title": "PostgreSQL 18 最新版本发布了,看看都有啥? - 墨天轮",
+          "url": "https://www.modb.pro/db/1971243032825573376",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 3,
+          "rerank": 0.815,
+          "title": "PostgreSQL 18新特性揭秘：4大突破你绝对不知道的改变！_用户_性...",
+          "url": "https://www.sohu.com/a/865222711_121924584",
+          "engine": "www.sogou.com",
+          "snippet": "在科技迅猛发展的今天，PostgreSQL作为一款开源的关系数据库管理系统，其每一次版本更新都吸引着广泛的关注。如今，PostgreSQL 18即将面世，预计将于..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.802,
+          "title": "PostgreSQL 18新特性前瞻|索引|主键|key|优化器|postgresql|...",
+          "url": "https://www.163.com/dy/article/JPGNQ7OP0511CUMI.html",
+          "engine": "www.sogou.com",
+          "snippet": "虽然本文中列举的许多新特性最终可能会有变化,但这并不妨碍我们展望 PostgreSQL 18 中可能引入的新特性,让我们一览为快 ~ 可观测性 pg_stat_all_tables 在pg_stat_all_tables 中新增了 (auto) vacuum 和(auto) analyze 的相关耗时指标,ytes | 8192hits | 11049evictions | 0reuses | f"
+        },
+        {
+          "rank": 5,
+          "rerank": 0.79,
+          "title": "【2025最新】PostgreSQL的安装、配置与使用指南 - 知乎",
+          "url": "https://zhuanlan.zhihu.com/p/1908417758892369241",
+          "engine": "cn.bing.com",
+          "snippet": "2025年7月31日 · PostgreSQL 是一个高度可扩展的开源对象关系数据库系统，它以其强大的功能、可靠性、数据完整性和对 SQL标准  …"
+        },
+        {
+          "rank": 6,
+          "rerank": 0.779,
+          "title": "PostgreSQL：文档：18：PostgreSQL 18.0 文档 ...",
+          "url": "https://postgres.ac.cn/docs/current/index.html",
+          "engine": "cn.bing.com",
+          "snippet": "版权所有 © 1996–2025 PostgreSQL 全球开发组 法律声明 目录 前言 1. 什么是 PostgreSQL？ 2. PostgreSQL 简史 3. 约定 4. 更多信息 …"
+        },
+        {
+          "rank": 7,
+          "rerank": 0.772,
+          "title": "PostgreSQL: 世界上最先进的开源数据库 - PostgreSQL 数据库",
+          "url": "https://postgresql.ac.cn/",
+          "engine": "cn.bing.com",
+          "snippet": "2025年10月16日 · 最新发布 2025-09-25 - PostgreSQL 18 发布！ PostgreSQL 全球开发组今日宣布发布 PostgreSQL 18，这是世界上 …"
+        },
+        {
+          "rank": 8,
+          "rerank": 0.758,
+          "title": "PostgreSQL_百度百科",
+          "url": "https://baike.baidu.com/item/PostgreSQL/530240",
+          "engine": "cn.bing.com",
+          "snippet": "PostgreSQL支持大部分的SQL标准并且提供了很多其他现代特性，如复杂查询、外键、触发器、视图、事务完整性、多版本并发控制 …"
+        },
+        {
+          "rank": 9,
+          "rerank": 0.758,
+          "title": "PostgreSQL 18 深度实战:异步 I/O + Skip Scan 索引革命——从 3...",
+          "url": "https://www.chenxutan.com/d/3838.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 10,
+          "rerank": 0.755,
+          "title": "Windows 安装 PostgreSQL18 超详细保姆级教程-CSDN博客",
+          "url": "https://blog.csdn.net/m0_58648890/article/details/155314594",
+          "engine": "cn.bing.com",
+          "snippet": "2026年4月21日 · 文章浏览阅读2.1w次，点赞59次，收藏103次。 本文提供一份最完整、最详细、最适合新手的PostgreSQL18安装保 …"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "query": "PostgreSQL 18 AIO async I/O UUIDv7 virtual generated columns",
+      "total_s": 6.97,
+      "search_s": 4.34,
+      "rerank_s": 2.63,
+      "merged": 22,
+      "engines": {
+        "www.baidu.com": 7,
+        "www.sogou.com": 2,
+        "cn.bing.com": 1
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.811,
+          "title": "PostgreSQL 18发布!性能飙升3倍 支持UUIDv - 百度知道",
+          "url": "https://neon.com/blog/postgres-18-beta-is-out",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.791,
+          "title": "PostgreSQL: PostgreSQL 18 Released!",
+          "url": "https://www.postgresql.org/about/news/postgresql-18-released-3142/?ref=ostreff.info",
+          "engine": "www.sogou.com",
+          "snippet": "Developers also benefit from PostgreSQL 18 features,including virtual generated columns that compute values at query time, and thedatabase-friendly uuidv7() function that provides better indexing and "
+        },
+        {
+          "rank": 3,
+          "rerank": 0.765,
+          "title": "PostgreSQL 18 深度解析:当异步 I/O 把数据库性能推进「3 倍时代...",
+          "url": "http://chenxutan.com/d/2026.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 4,
+          "rerank": 0.76,
+          "title": "PostgreSQL 18 已发布:一文读懂核心变化-腾讯云开发者社区-腾讯云",
+          "url": "https://cloud.tencent.com/developer/article/2586464",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 5,
+          "rerank": 0.758,
+          "title": "...发布,新增AIO uuidv7 OAuth等功能_postgresql 18 analyze only-CSDN...",
+          "url": "https://blog.csdn.net/chensuiyi/article/details/156073158",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 6,
+          "rerank": 0.748,
+          "title": "PostgreSQL 18 Beta 1发布,有哪些功能亮点?-CSDN博客",
+          "url": "https://tonydong.blog.csdn.net/article/details/147811136",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 7,
+          "rerank": 0.748,
+          "title": "PostgreSQL 18 Released: 3x Faster I/O Performance & Upgrade...",
+          "url": "https://www.commandprompt.com/blog/postgresql-18-revolutionary-performance-boost-now-available/",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 8,
+          "rerank": 0.724,
+          "title": "PostgreSQL Source Code: Data Fields",
+          "url": "https://doxygen.postgresql.org/functions_g.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 9,
+          "rerank": 0.708,
+          "title": "PostgreSQL 教程 | 菜鸟教程",
+          "url": "https://www.runoob.com/postgresql/postgresql-tutorial.html",
+          "engine": "cn.bing.com",
+          "snippet": "PostgreSQL 教程 PostgreSQL 是一个免费的对象-关系数据库服务器 (ORDBMS)，在灵活的BSD许可证下发行。 PostgreSQL 开发者 …"
+        },
+        {
+          "rank": 10,
+          "rerank": 0.697,
+          "title": "随笔档案「2025年4月8日」：CentOS 7系统上安装PostgreSQL的详细...",
+          "url": "https://www.cnblogs.com/huamoai/p/archive/2025/04/08",
+          "engine": "www.sogou.com",
+          "snippet": "摘要： 一、安装步骤 1. 添加PostgreSQL官方仓库 sudo yum install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-..."
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "query": "postgresql.org docs 18 release",
+      "total_s": 8.69,
+      "search_s": 4.36,
+      "rerank_s": 4.33,
+      "merged": 28,
+      "engines": {
+        "www.baidu.com": 4,
+        "www.sogou.com": 5,
+        "cn.bing.com": 1
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.881,
+          "title": "PostgreSQL: PostgreSQL 18 Beta 1 Released!",
+          "url": "https://www.linuxcompatible.org/story/postgresql-176-1610-1514-1419-1322-and-18-beta-3-released/",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.853,
+          "title": "PostgreSQL 18: release plans · Issue #224 · ossc-db/pg_hint...",
+          "url": "http://postgresql.org/",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 3,
+          "rerank": 0.846,
+          "title": "PostgreSQL: Documentation: 18: PostgreSQL 18.4 Documentation",
+          "url": "http://www.postgresql.org/docs/current/static/index.html",
+          "engine": "www.sogou.com",
+          "snippet": "PostgreSQL 18.4 Documentation Next The PostgreSQL Global Development ... Release Notes F. Additional Supplied Modules and Extensions G. Additional ..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.833,
+          "title": "PostgreSQL: PostgreSQL 18 Released!",
+          "url": "https://www.postgresql.org/about/news/postgresql-18-released-3142/?ref=ostreff.info",
+          "engine": "www.sogou.com",
+          "snippet": "PostgreSQL Project The PostgreSQL Global Development Group today announced the release of PostgreSQL 18 ,the latest version of the world's most advanced ..."
+        },
+        {
+          "rank": 5,
+          "rerank": 0.821,
+          "title": "PostgreSQL 17.6, 16.10, 15.14, 14.19, 13.22, and 18 Beta 3...",
+          "url": "https://blog.csdn.net/chensuiyi/article/details/156073158",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 6,
+          "rerank": 0.813,
+          "title": "PostgreSQL: PostgreSQL 17.4, 16.8, 15.12, 14.17, and 13.20 Released!",
+          "url": "https://www.postgresql.org/message-id/174006113082.664.12166915817407398396%40wrigleys.postgresql.org",
+          "engine": "www.sogou.com",
+          "snippet": "//www.postgresql.org/docs/release/) . Bug Fixes and Improvements -- The issues listed below affect PostgreSQL 17. Some of these issues may also affect other ..."
+        },
+        {
+          "rank": 7,
+          "rerank": 0.807,
+          "title": "PostgreSQL：文档：18：PostgreSQL 18.0 文档 ...",
+          "url": "https://postgres.ac.cn/docs/current/index.html",
+          "engine": "cn.bing.com",
+          "snippet": "版权所有 © 1996–2025 PostgreSQL 全球开发组 法律声明 目录 前言 1. 什么是 PostgreSQL？ 2. PostgreSQL 简史 3. 约定 4. 更多信息 …"
+        },
+        {
+          "rank": 8,
+          "rerank": 0.791,
+          "title": "PostgreSQL 18新特性前瞻|索引|主键|key|优化器|postgresql|...",
+          "url": "https://www.163.com/dy/article/JPGNQ7OP0511CUMI.html",
+          "engine": "www.sogou.com",
+          "snippet": "PostgreSQL 18 中可能引入的新特性，让我们一览为快 ~ 可观测性 pg_stat_all_... //postgres-howto.cn/#/./docs/64?id=how-to-use-uuid[2]•https://postgres-howto...."
+        },
+        {
+          "rank": 9,
+          "rerank": 0.79,
+          "title": "PostgreSQL v18发布,新增AIO uuidv7 OAuth等功能_postgresql 18 analy...",
+          "url": "https://news.sohu.com/a/940076355_121124365",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 10,
+          "rerank": 0.787,
+          "title": "PostgreSQL: Documentation: 18: pg_upgrade",
+          "url": "https://www.postgresql.org/docs/current/pgupgrade.htm",
+          "engine": "www.sogou.com",
+          "snippet": "major release of PostgreSQL , including snapshot and beta releases. Warning ... 18, database clusters maintain their own default char signedness setting, which ..."
+        }
+      ]
+    }
+  ]
+}

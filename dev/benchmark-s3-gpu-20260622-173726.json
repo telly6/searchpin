@@ -1,0 +1,297 @@
+{
+  "scenario": {
+    "name": "场景3_上海GPU",
+    "title": "上海AI算力/国产GPU芯片"
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "query": "上海AI算力中心国产GPU芯片2026",
+      "total_s": 6.89,
+      "search_s": 4.35,
+      "rerank_s": 2.54,
+      "merged": 18,
+      "engines": {
+        "www.sogou.com": 3,
+        "www.baidu.com": 4,
+        "cn.bing.com": 3
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.915,
+          "title": "2026年,国产GPU领军者将如何颠覆AI市场?_季宇_集成电路_技术",
+          "url": "https://www.sohu.com/a/828346302_122006510",
+          "engine": "www.sogou.com",
+          "snippet": "在AI技术飞速发展的今天,算力的需求如潮水般涌来,各大科技公司都在为下一代GPU的争夺战而摩拳擦掌。最近,一则令人振奋的消息传来:北京行云集成..."
+        },
+        {
+          "rank": 2,
+          "rerank": 0.888,
+          "title": "上海AI芯片企业引领国产算力发展_科技_模型_DeepSeek",
+          "url": "https://www.sohu.com/a/870738139_122001006",
+          "engine": "www.sogou.com",
+          "snippet": "国产AI芯片的崛起 随着全球算力底座的变化，国产AI芯片正在迎来黄金发展期。沐曦CTO杨建指出，2025年国产GPU的一大机会在于私有化部署，这将为国产..."
+        },
+        {
+          "rank": 3,
+          "rerank": 0.882,
+          "title": "国产芯片迎来新突破 创全球算力纪录通用GPU芯片在上海发布_科技_...",
+          "url": "https://it.sohu.com/a/575782298_362042",
+          "engine": "www.sogou.com",
+          "snippet": "人类社会对算力的追求也越来越高。8月9日，国产芯片迎来重大突破，壁仞科技在上海发布首款通用GPU芯片BR100，创出全球算力纪录，16位浮点算力达到..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.877,
+          "title": "GPU芯片四小龙(包含沐曦股份、天数智... - 百度百科",
+          "url": "https://zhuanlan.zhihu.com/p/2023345265361331214",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 5,
+          "rerank": 0.829,
+          "title": "2026,国产AI芯片,跨越天堑:从“推理”走向“训练”",
+          "url": "https://xueqiu.com/2815370195/394823987?_ugc_source=ugcbaiducard",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 6,
+          "rerank": 0.783,
+          "title": "算力新变局|深度",
+          "url": "https://mail.cndca.org.cn/mjzy/xwzx/mtjj/2083189/index.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 7,
+          "rerank": 0.76,
+          "title": "为什么国产 AI 芯片的“心脏”,跳动在上海? - 知乎",
+          "url": "https://www.jfdaily.com/sgh/detail?id=4005688",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 8,
+          "rerank": 0.756,
+          "title": "【2026上海景點】自由行必讀!TOP16上海經典/熱門/新景點推薦",
+          "url": "https://gowithmarkhazyl.com/must-visit-places-in-shanghai/",
+          "engine": "cn.bing.com",
+          "snippet": "6 天之前 · 身為中國一線直轄市的上海，黃浦江貫穿將上海分為浦東浦西，各自發展出迷人的景點，摩天大樓林立卻也同時有著百年歷史的建築，是個兼具現代摩登風格又充滿復古韻味的城市，想更了解上 …"
+        },
+        {
+          "rank": 9,
+          "rerank": 0.755,
+          "title": "【2026最新】上海景點Top15必去.宮廷宴.外灘.武康路.上海 ...",
+          "url": "https://kuolife.com/china-shanghai-attractions-mustgo/",
+          "engine": "cn.bing.com",
+          "snippet": "2026年5月8日 · 本文幫大家整理我2026上海自由行，實際有去上海景點，濃縮後得出，上海必去Top15景點：上海宮廷宴、上海迪士尼（是全球首個以動物方城市電影為主題的園區）、上海蘇州一日遊、上 …"
+        },
+        {
+          "rank": 10,
+          "rerank": 0.743,
+          "title": "上海市文化和旅游局，上海官方中国旅游网站，上海旅游网站 ...",
+          "url": "https://www.meet-in-shanghai.net/cn/index.html",
+          "engine": "cn.bing.com",
+          "snippet": "2025年4月17日 · 中国上海官方旅游网站是一本实用且权威的指南，为前往中国上海旅游的游客以及计划和组织企业奖励旅游、会议、展览和活动（MICE）的公司提供信息。 网站涵盖上海地图、天气、航 …"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "query": "壁仞科技 摩尔线程 GPU 2026 最新",
+      "total_s": 9.45,
+      "search_s": 8.18,
+      "rerank_s": 1.27,
+      "merged": 27,
+      "engines": {
+        "www.baidu.com": 4,
+        "www.sogou.com": 3,
+        "www.bing.com": 2,
+        "cn.bing.com": 1
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.943,
+          "title": "摩尔线程亮相2026智源大会:软硬全栈创新,构筑国产GPU算力坚实底座",
+          "url": "https://xueqiu.com/9372064849/385899450",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.882,
+          "title": "GPU芯片(通用GPU芯片) - 百度百科",
+          "url": "http://m.bjnews.com.cn/detail/1781495278129763.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 3,
+          "rerank": 0.85,
+          "title": "摩尔线程_摩尔线程最新动态_IT之家",
+          "url": "https://www.ithome.com/tags/%e6%91%a9%e5%b0%94%e7%ba%bf%e7%a8%8b/",
+          "engine": "www.sogou.com",
+          "snippet": "摩尔线程 2026 产品发布会将于 5 月18 日举行 摩尔线程此次预计将带来 NAS / 迷你主机形态的家庭 AI 产品。 Tags： 摩尔线程 05月16日 摩尔线程 * 中国移动：国产 GPU 支撑央企..."
+        },
+        {
+          "rank": 4,
+          "rerank": 0.824,
+          "title": "资本加持下的国产GPU四小龙:打破英伟达垄断的最后征程,尚有多长...",
+          "url": "http://wap.seccw.com/index.php/Index/detail/id/44143.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 5,
+          "rerank": 0.8,
+          "title": "壁仞科技、摩尔线程均完成智谱GLM-5.2适配",
+          "url": "https://new.qq.com/rain/a/20260617A06G4W00",
+          "engine": "www.sogou.com",
+          "snippet": "6月17日,壁仞科技、摩尔线程两家国产GPU厂商相继宣布,在智谱新一代开源旗舰模型GLM-5.2发布后,公司产品完成\"Day-0\"适配。 壁仞科技方面称,壁砺166系列基于vLLM推理框架完成模型适配与调优,向开发者提供快速部署方案及长程任务支持;摩尔线程在AI训推一体全功能GPU智算卡MTT S5000上完成极速适配,基于SGLang-MUSA推理引擎及TileLang-MUSA算子编程语言,优"
+        },
+        {
+          "rank": 6,
+          "rerank": 0.762,
+          "title": "壁仞摩尔完成智谱GLM-5.2适配,国产GPU响应SOTA模型_推理_方案...",
+          "url": "https://www.sohu.com/a/1037904563_122066678",
+          "engine": "www.sogou.com",
+          "snippet": "6月17日,国产GPU厂商壁仞科技与摩尔线程相继宣布,已完成对智谱新一代开源旗舰模型GLM-5.2的“Day-0”适配。 壁仞科技进展 适配产品:壁砺166系列 技术方案:基于vLLM推理框架完成模型适配与调优 实现功能:向开发者提供快速部署方案及长程任务支持 摩尔线程进展 适配产品:AI训推一体全功能GPU智算卡MTTS5000 技术方案:基于SGLang-MUSA推理引擎及TileLang-M"
+        },
+        {
+          "rank": 7,
+          "rerank": 0.757,
+          "title": "2026国产AI芯片公司Top10出炉!摩尔线程居第二",
+          "url": "http://finance.ce.cn/stock/gsgdbd/202606/t20260616_3035204.shtml",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 8,
+          "rerank": 0.736,
+          "title": "大智慧tv版 理想股票技术论坛",
+          "url": "https://www.55188.com/tag-7369575.html",
+          "engine": "www.bing.com",
+          "snippet": "May 14, 2026 · 大智慧tv版无法打开，遇到问题的解决方法分享 [股票软件指标公式技术交流] 传奇100年 2025-10-29 相关标签： 大智慧TV版 打不开问题 网络问题 软件更新 设备兼容性 阅读 334 回复 1 赞 0 …"
+        },
+        {
+          "rank": 9,
+          "rerank": 0.732,
+          "title": "【技术分析】大智慧linux版：使用体验分享，真实感受，不 ...",
+          "url": "https://www.55188.com/thread-38428291-1-1.html",
+          "engine": "www.bing.com",
+          "snippet": "Mar 16, 2026 · 相关帖子 ♡ 新疆宏源大智慧软件：日常使用的智能助手，便捷生活小帮手 ♡ “大智慧365网站”：日常实用指南，轻松开启智慧生活 ♡ “大智慧软件365日常应用解析：软件功能与生活融 …"
+        },
+        {
+          "rank": 10,
+          "rerank": 0.719,
+          "title": "壁_壁字的拼音,意思,字典释义 - 《新华字典》 - 汉辞宝",
+          "url": "https://www.hancibao.com/zi/58c1",
+          "engine": "cn.bing.com",
+          "snippet": "2026年6月15日 · 【壁】字本义为墙壁。 【壁】字造字法为形声。 从土，辟声。 【壁】字五行属土, 字形结构为上下, 可拆字为“辟 土”。 【壁】字拼音为bì, 部首为土, 笔画为16画, 笔顺为“フ一ノ丨フ一丶一 …"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "query": "上海智算中心 昇腾 壁仞 沐曦 天数智芯",
+      "total_s": 8.73,
+      "search_s": 7.33,
+      "rerank_s": 1.39,
+      "merged": 29,
+      "engines": {
+        "www.baidu.com": 5,
+        "www.sogou.com": 2,
+        "cn.bing.com": 3
+      },
+      "pollution": null,
+      "results": [
+        {
+          "rank": 1,
+          "rerank": 0.843,
+          "title": "5万颗芯片撬动AI供应链!天数智芯为何让字节跳动动心?",
+          "url": "http://www.xinhuanet.com/20260126/85a9760142234e0a97073702726b7be5/c.html",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 2,
+          "rerank": 0.823,
+          "title": "大模型浪潮下迎算力巨变 上海芯片企业争做AI“潮人” _ 东方财富网",
+          "url": "https://finance.eastmoney.com/a/202503133345170960.html",
+          "engine": "www.sogou.com",
+          "snippet": "该平台支持AMD、华为昇腾、天数智芯、沐曦、摩尔线程、英伟达六种异构芯片大模型混合训练。记者从无问芯穹了解到，以上Infini-AI异构云平台上线以来，..."
+        },
+        {
+          "rank": 3,
+          "rerank": 0.799,
+          "title": "上海市人民政府新闻办公室",
+          "url": "https://www.shio.gov.cn/TrueCMS/shxwbgs/ywts/content/32dad48f-7627-4d70-838a-1cadaf4ee69a.htm",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 4,
+          "rerank": 0.792,
+          "title": "上海市文化和旅游局，上海中国官方旅游网站，上海旅游网站 ...",
+          "url": "https://www.meet-in-shanghai.net/tc/",
+          "engine": "cn.bing.com",
+          "snippet": "9 小时之前 · 上海市官方旅游网站是游客前往中国上海旅行以及从事企业激励旅游、会议、展览和活动（MICE）的企业规划和组织的实用权威指南。 网站涵盖上海地图、天气、航班、机场、火车、酒店 …"
+        },
+        {
+          "rank": 5,
+          "rerank": 0.784,
+          "title": "上海市文化和旅游局，上海官方中国旅游网站，上海旅游网站 ...",
+          "url": "https://www.meet-in-shanghai.net/cn/index.html",
+          "engine": "cn.bing.com",
+          "snippet": "2025年4月17日 · 中国上海官方旅游网站是一本实用且权威的指南，为前往中国上海旅游的游客以及计划和组织企业奖励旅游、会议、展览和活动（MICE）的公司提供信息。 网站涵盖上海地图、天气、航 …"
+        },
+        {
+          "rank": 6,
+          "rerank": 0.776,
+          "title": "国内9家未上市GPU公司分析,我找到了“中国英伟达”! - 知乎",
+          "url": "https://www.jfdaily.com.cn/wx/detail.do?id=1084250",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 7,
+          "rerank": 0.771,
+          "title": "国内IDC机房托管服务商-提供国际T3+数据中心智算中心",
+          "url": "https://zhuanlan.zhihu.com/p/17259317189",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 8,
+          "rerank": 0.768,
+          "title": "国产算力消息:华为昇腾、阿里平头哥、沐曦、壁仞:四大国产GPU可以...",
+          "url": "https://zhuanlan.zhihu.com/p/2014109606914303748",
+          "engine": "www.baidu.com",
+          "snippet": ""
+        },
+        {
+          "rank": 9,
+          "rerank": 0.767,
+          "title": "AI芯片厂商掀IPO热潮,谁能成为下一个“寒武纪”? | 每经网",
+          "url": "https://www.nbd.com.cn/articles/2025-01-21/3730252.html",
+          "engine": "www.sogou.com",
+          "snippet": "如壁仞科技、天数智芯、燧原股份、摩尔线程、沐曦等。其中,壁仞科技、燧原股份、摩尔线程、沐曦目前已进入上市辅导阶段。 AI算力芯片主要可以分为GPU..."
+        },
+        {
+          "rank": 10,
+          "rerank": 0.763,
+          "title": "漫步上海 | 16个超好玩的景点，一天就够了_澎湃号·湃客_澎湃 ...",
+          "url": "https://www.thepaper.cn/newsDetail_forward_27506127",
+          "engine": "cn.bing.com",
+          "snippet": "2024年5月26日 · 崇明区 西沙国家湿地公园 崇明是上海的后花园，岛上的自然风光迤逦，不染纤尘。 西沙国家湿地公园就是其中之一，它是上海目前唯一具有自然潮汐现象和成片滩涂林地的自然湿地，传 …"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,896 @@
+{
+  "timestamp": "2026-06-22T17:06:50.072232",
+  "environment": "domestic (no VPN)",
+  "scenarios": {
+    "场景1_PostgreSQL18": {
+      "title": "PostgreSQL 18 数据库新版本",
+      "rounds": [
+        {
+          "round": 1,
+          "query": "PostgreSQL 18 release notes new features 2026",
+          "total_s": 3.69,
+          "search_s": 1.28,
+          "rerank_s": 2.41,
+          "merged": 24,
+          "engines": {
+            "www.baidu.com": 2,
+            "www.sogou.com": 4,
+            "cn.bing.com": 4
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.8497442007064819,
+              "title": "PostgreSQL 18 最新版本发布了,看看都有啥? - 墨天轮",
+              "url": "https://www.modb.pro/db/1971243032825573376",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.821800172328949,
+              "title": "PostgreSQL 18 Released: 3x Faster I/O Performance & Upgrade...",
+              "url": "https://www.commandprompt.com/blog/postgresql-18-revolutionary-performance-boost-now-available/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 3,
+              "rerank": 0.8164012432098389,
+              "title": "PostgreSQL: Release Notes",
+              "url": "https://www.postgresql.org/docs/release/16.8/",
+              "engine": "www.sogou.com",
+              "snippet": "Release Notes Home Next E.7. Release 16.8 # E.7.1. Migration to Version 16.8 ... For information about new features in major release 16, see Section E.15 . E.7.1..."
+            },
+            {
+              "rank": 4,
+              "rerank": 0.8087574243545532,
+              "title": "【2025最新】PostgreSQL的安装、配置与使用指南 - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/1908417758892369241",
+              "engine": "cn.bing.com",
+              "snippet": "2025年7月31日 · PostgreSQL 是一个高度可扩展的开源对象关系数据库系统，它以其强大的功能、可靠性、数据完整性和对 SQL标准 的遵守而闻名。 以下是PostgreSQL的一些关键特性： 标准遵 …"
+            },
+            {
+              "rank": 5,
+              "rerank": 0.8037165403366089,
+              "title": "E. Release Notes - [ PostgreSQL 手册 ] - 在线原生手册 - php中文网",
+              "url": "https://www.php.cn/manual/view/21026.html",
+              "engine": "www.sogou.com",
+              "snippet": "changes in each PostgreSQL release, with major features and migration issues listed at the top. The release notes do not contain changes that affect only a few users or changes that ..."
+            },
+            {
+              "rank": 6,
+              "rerank": 0.8029722571372986,
+              "title": "PostgreSQL: 世界上最先进的开源数据库 - PostgreSQL 数据库",
+              "url": "https://postgresql.ac.cn/",
+              "engine": "cn.bing.com",
+              "snippet": "2025年10月16日 · 最新发布 2025-09-25 - PostgreSQL 18 发布！ PostgreSQL 全球开发组今日宣布发布 PostgreSQL 18，这是世界上最先进的开源数据库的最新版本。"
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7887856960296631,
+              "title": "PostgreSQL: The world's most advanced open source database",
+              "url": "https://postgresql.org/",
+              "engine": "www.sogou.com",
+              "snippet": "features and changes in the release notes . In the spirit of the open source PostgreSQL ... 2026-07-18 · PostgreSQL Madagascar Conference 2026 2026-08-20 – 2026-08-21 · ..."
+            },
+            {
+              "rank": 8,
+              "rerank": 0.7869852781295776,
+              "title": "PostgreSQL: PostgreSQL 18 Released!",
+              "url": "https://www.postgresql.org/about/news/postgresql-18-released-3142/?ref=ostreff.info",
+              "engine": "www.sogou.com",
+              "snippet": "18 thatmay also be helpful for your use cases. Please see the release notes for acomplete list of new and changed features. About PostgreSQL PostgreSQL is the ..."
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7829145193099976,
+              "title": "PostgreSQL：文档：18：PostgreSQL 18.0 文档 ...",
+              "url": "https://postgres.ac.cn/docs/current/index.html",
+              "engine": "cn.bing.com",
+              "snippet": "版权所有 © 1996–2025 PostgreSQL 全球开发组 法律声明 目录 前言 1. 什么是 PostgreSQL？ 2. PostgreSQL 简史 3. 约定 4. 更多信息 5. 错误报告指南 I. 教程 1. 入门 2. The SQL 语言 3. 高级特性 II. …"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.7699871063232422,
+              "title": "PostgreSQL_百度百科",
+              "url": "https://baike.baidu.com/item/PostgreSQL/530240",
+              "engine": "cn.bing.com",
+              "snippet": "PostgreSQL支持大部分的SQL标准并且提供了很多其他现代特性，如复杂查询、外键、触发器、视图、事务完整性、多版本并发控制等。 同样，PostgreSQL也可以用许多方法扩展，例如通过增加新的数 …"
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 2,
+          "query": "postgresql.org docs release 18 AIO async I/O OAuth uuidv7 virtual generated columns",
+          "total_s": 5.3,
+          "search_s": 0.97,
+          "rerank_s": 4.33,
+          "merged": 24,
+          "engines": {
+            "www.baidu.com": 7,
+            "www.sogou.com": 2,
+            "cn.bing.com": 1
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.8803219199180603,
+              "title": "PostgreSQL v18发布,新增AIO uuidv7 OAuth等功能_postgresql 18 analy...",
+              "url": "https://blog.csdn.net/chensuiyi/article/details/156073158",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.7967108488082886,
+              "title": "揭秘PostgreSQL 18：新特性一览,数据处理将更高效！_操作_并行_...",
+              "url": "https://www.sohu.com/a/865222527_122004016",
+              "engine": "www.sogou.com",
+              "snippet": "PostgreSQL 18还将引入UUIDv7，结合毫秒级Unix时间戳和随机位，不仅提升了唯一性，更具可排序性。这在数据插入、索引和查询过程中，有助于避免因随机..."
+            },
+            {
+              "rank": 3,
+              "rerank": 0.7904106378555298,
+              "title": "PostgreSQL 18 × MySQL 9.7 LTS 深度实战:异步I/O、虚拟生成列与...",
+              "url": "http://chenxutan.com/d/2026.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.7869300842285156,
+              "title": "PostgreSQL 18 最新版本发布了,看看都有啥? - 墨天轮",
+              "url": "https://www.modb.pro/db/1971243032825573376",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.7858657240867615,
+              "title": "聚焦六大功能:PostgreSQL 18 新特性深度解析_postgresql 跳跃索引...",
+              "url": "https://blog.csdn.net/mzl87/article/details/156953609",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 6,
+              "rerank": 0.785301923751831,
+              "title": "PostgreSQL 18 深度解析:3倍I/O性能跃迁、虚拟生成列与云原生架构...",
+              "url": "https://www.chenxutan.com/d/2019.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 7,
+              "rerank": 0.775916576385498,
+              "title": "PostgreSQL 18 已发布:一文读懂核心变化-腾讯云开发者社区-腾讯云",
+              "url": "https://cloud.tencent.com/developer/article/2586464",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 8,
+              "rerank": 0.7547070384025574,
+              "title": "2025年9月25日:PostgreSQL 18 正式发布! - 哔哩哔哩",
+              "url": "https://www.bilibili.com/opus/1116878066051711014",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7488645315170288,
+              "title": "PostgreSQL: 世界上最先进的开源数据库 - PostgreSQL 数据库",
+              "url": "https://postgresql.ac.cn/",
+              "engine": "cn.bing.com",
+              "snippet": "2025年10月16日 · 最新发布 2025-09-25 - PostgreSQL 18 发布！ PostgreSQL 全球开发组今日宣布发布 PostgreSQL 18，这是世界上最先进的开源数据库的最新版本。"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.7341257929801941,
+              "title": "PostgreSQL: The world's most advanced open source database",
+              "url": "https://postgresql.org/",
+              "engine": "www.sogou.com",
+              "snippet": "The official site for PostgreSQL, the world's most advanced open source database"
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 3,
+          "query": "\"PostgreSQL 18\" review benchmark AIO skip scan performance 2025",
+          "total_s": 4.98,
+          "search_s": 1.0,
+          "rerank_s": 3.98,
+          "merged": 23,
+          "engines": {
+            "www.baidu.com": 8,
+            "cn.bing.com": 1,
+            "www.sogou.com": 1
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.837639570236206,
+              "title": "PostgreSQL 18 Released: 3x Faster I/O Performance & Upgrade...",
+              "url": "https://www.commandprompt.com/blog/postgresql-18-revolutionary-performance-boost-now-available/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.7847736477851868,
+              "title": "PostgreSQL Performance Tuning Guide: Settings That Make a...",
+              "url": "https://www.percona.com/blog/tuning-postgresql-database-parameters-to-optimize-performance/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 3,
+              "rerank": 0.7845155000686646,
+              "title": "Postgres 18:Skip Scan - 摆脱最左索引限制_postgres skip scan-CSDN博...",
+              "url": "https://blog.csdn.net/IvorySQL/article/details/155571796",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.7652566432952881,
+              "title": "PostgreSQL 18 新特性解析(附一键安装脚本)-CSDN博客",
+              "url": "https://blog.csdn.net/qq_36936192/article/details/152115997",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.753769040107727,
+              "title": "PostgreSQL 18 Beta 1发布,有哪些功能亮点?-CSDN博客",
+              "url": "https://tonydong.blog.csdn.net/article/details/147811136",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7468703389167786,
+              "title": "PostgreSQL 18 正式发布,六大亮点特性! - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/1955713356955644491",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7441455125808716,
+              "title": "PostgreSQL v18发布,新增AIO uuidv7 OAuth等功能 - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/1985304642175914250",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 8,
+              "rerank": 0.724866509437561,
+              "title": "Planet PostgreSQL",
+              "url": "https://planet.postgresql.org/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7241302132606506,
+              "title": "【2025最新】PostgreSQL的安装、配置与使用指南 - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/1908417758892369241",
+              "engine": "cn.bing.com",
+              "snippet": "2025年7月31日 · PostgreSQL 是一个高度可扩展的开源对象关系数据库系统，它以其强大的功能、可靠性、数据完整性和对 SQL标准 的遵守而闻名。 以下是PostgreSQL的一些关键特性： 标准遵 …"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.7196784019470215,
+              "title": "PostgreSQL 18新特性前瞻|索引|主键|key|优化器|postgresql|...",
+              "url": "https://www.163.com/dy/article/JPGNQ7OP0511CUMI.html",
+              "engine": "www.sogou.com",
+              "snippet": "前言 距离 PostgreSQL 17 正式发布已近半年，按照每年发布一个大版本的惯例，PostgreSQL 18 预计将在 2025 年底发布。距离正式发布还有一段时间，社区..."
+            }
+          ],
+          "pollution": null
+        }
+      ],
+      "avg_total": 4.656666666666667,
+      "avg_search": 1.0833333333333333,
+      "avg_rerank": 3.5733333333333337
+    },
+    "场景2_ClaudeOpus": {
+      "title": "Claude Opus 5 / Fable 5 AI 模型发布",
+      "rounds": [
+        {
+          "round": 1,
+          "query": "Claude Opus 5 Anthropic latest model release 2026",
+          "total_s": 3.27,
+          "search_s": 1.06,
+          "rerank_s": 2.22,
+          "merged": 18,
+          "engines": {
+            "www.baidu.com": 5,
+            "cn.bing.com": 3,
+            "www.sogou.com": 2
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.8371556401252747,
+              "title": "Claude Opus \\ Anthropic",
+              "url": "https://www.anthropic.com/claude/opus",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.7913671135902405,
+              "title": "Home \\ Anthropic",
+              "url": "https://www.anthropic.com/",
+              "engine": "cn.bing.com",
+              "snippet": "4 天之前 · Claude Opus 4.8 An upgrade to Opus across coding, agentic tasks, and professional work, with the consistency to handle long-running work."
+            },
+            {
+              "rank": 3,
+              "rerank": 0.781935453414917,
+              "title": "Claude 中文版：Claude 4.5 国内使用指南～（支持 Claude ...",
+              "url": "https://www.claudezh.com/claude/claude-chinese.html",
+              "engine": "cn.bing.com",
+              "snippet": "9 小时之前 · Claude 是Anthropic最新发布的AI模型，具备顶尖的推理能力和多模态理解。立即访问Claude中文镜像站体验。"
+            },
+            {
+              "rank": 4,
+              "rerank": 0.78140789270401,
+              "title": "claude opus5",
+              "url": "https://www.digitalocean.com/blog/whats-new-on-gradient-ai-platform",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.7780219316482544,
+              "title": "Claude（Anthropic发布的大型语言模型）_百度百科",
+              "url": "https://baike.baidu.com/item/Claude/62812102",
+              "engine": "cn.bing.com",
+              "snippet": "2024年3月发布Claude 3系列包含Opus、Sonnet和Haiku三个子模型，其中Opus在本科/研究生知识、数学等领域基准测试中表现优于GPT-4和Gemini 1.0 Ultra，支持百万Token上下文处理。 2024年10月 …"
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7647534012794495,
+              "title": "Best AI Models for Claude Max",
+              "url": "https://sourceforge.net/software/ai-models/integrates-with-claude-max/",
+              "engine": "www.sogou.com",
+              "snippet": "integrate with Claude Max as of June 2026 Sort By: Sponsored This a list of AI Models that... 4.7 Anthropic Claude Opus 4.7 is the latest Anthropic AI model release designed to ..."
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7213161587715149,
+              "title": "Anthropic“光与影”双重奏:高喊AI风险的同时推顶尖模型",
+              "url": "https://www.zhihu.com/question/2043500165433185738/answer/2043695378382460512",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 8,
+              "rerank": 0.7122244238853455,
+              "title": "Home \\ Anthropic",
+              "url": "https://anthropic.com/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7112529277801514,
+              "title": "Claude Fable 5正式发布:性能超越Opus 4.8?核心亮点与模型对比全...",
+              "url": "https://www.zhihu.com/pin/2048442490223702797",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 10,
+              "rerank": 0.7108942270278931,
+              "title": "GlobalGPT: Your All-in-one AI, GPT-5.5, Claude Opus 4.7 and 100+ AI ...",
+              "url": "https://www.glbgpt.com/",
+              "engine": "www.sogou.com",
+              "snippet": "access to the latest frontier language models: GPT-5.5 (OpenAI, released April 2026), Claude Opus 4.7 (Anthropic, released April 2026), Gemini 3.1 Pro (Google), DeepSeek V4 Pro, ..."
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 2,
+          "query": "Anthropic Claude Opus 4.8 release SWE-bench benchmark coding performance 2026",
+          "total_s": 4.56,
+          "search_s": 0.83,
+          "rerank_s": 3.73,
+          "merged": 14,
+          "engines": {
+            "www.baidu.com": 4,
+            "cn.bing.com": 6
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.7985779643058777,
+              "title": "Claude Opus 4.8(Anthropic推... - 百度百科",
+              "url": "https://www.anthropic.com/claude/opus",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.7703081965446472,
+              "title": "刚刚!Claude Opus 4.8 炸场,一夜升级成工作流AI",
+              "url": "https://adg.csdn.net/6a31124710ee7a33f27dd4b1.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 3,
+              "rerank": 0.7540872097015381,
+              "title": "Claude Opus \\ Anthropic",
+              "url": "https://aieii.com/posts/2026-06-01-opus-48-vs-gpt55-benchmark/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.7532585263252258,
+              "title": "Anthropic凭什么把OpenAI拉下王座？|美元_新浪财经_新浪网",
+              "url": "https://finance.sina.com.cn/wm/2026-05-13/doc-inhxtzpe0705890.shtml",
+              "engine": "cn.bing.com",
+              "snippet": "2026年5月13日 · Anthropic官方对Claude Code的定义也很直接：它不是autocomplete，而是agentic coding tool。它可以搜索和读取代码、编辑文件、写测试、运行测试、提交代码 ..."
+            },
+            {
+              "rank": 5,
+              "rerank": 0.7370088696479797,
+              "title": "MiniMax M3 对比 Claude Opus 4.8:SWE-Bench 差 10 分但便宜 10...",
+              "url": "https://www.zhihu.com/question/2043500165433185738/answer/2052340073337709201",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7190622687339783,
+              "title": "Claude（Anthropic发布的大型语言模型）_百度百科",
+              "url": "https://baike.baidu.com/item/Claude/62812102",
+              "engine": "cn.bing.com",
+              "snippet": "Claude是由美国人工智能公司Anthropic开发的大型语言模型家族，2023年3月15日发布初代版本，创始团队包含OpenAI前核心成员及GPT-3开发人员。 该模型采用Constitutional AI训练方法，支持多模态处 …"
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7021809220314026,
+              "title": "全球AI新王诞生，Anthropic估值冲爆1.2万亿，首次反超 ...",
+              "url": "https://www.36kr.com/p/3799097984080899",
+              "engine": "cn.bing.com",
+              "snippet": "2026年5月7日 · Anthropic——这个曾经一直笼罩在OpenAI阴影下的「二号选手」，在链上Pre-IPO市场的隐含估值瞬间飙升至 1.2万亿美元 （约合人民币8.7万亿元）。"
+            },
+            {
+              "rank": 8,
+              "rerank": 0.6853495240211487,
+              "title": "从OpenAI出走，到成为AI独角兽：Anthropic诞生的完整故事 ...",
+              "url": "https://news.qq.com/rain/a/20250409A09PHS00",
+              "engine": "cn.bing.com",
+              "snippet": "2025年4月9日 · 本文讲述了几个创始人从OpenAI出走，带着一套“AI必须讲道德”的理念，创立了Anthropic这家公司，并培养了（他们说的）“AI界最正直的公民”Claude。"
+            },
+            {
+              "rank": 9,
+              "rerank": 0.6816739439964294,
+              "title": "The AI for Problem Solvers | Claude by Anthropic",
+              "url": "https://claude.com/product/overview",
+              "engine": "cn.bing.com",
+              "snippet": "3 天之前 · Claude is Anthropic's AI, built for problem solvers. Tackle complex challenges, analyze data, write code, and think through your hardest work."
+            },
+            {
+              "rank": 10,
+              "rerank": 0.6759033799171448,
+              "title": "Anthropic（美国人工智能股份有限公司）_百度百科",
+              "url": "https://baike.baidu.com/item/Anthropic/62639515",
+              "engine": "cn.bing.com",
+              "snippet": "2026年2月5日 · Anthropic是一家位于美国加州旧金山的人工智能股份有限公司，成立于2021年，致力于构建可靠、可解释和可操纵的AI系统。 该公司由达里奥·阿莫迪 和丹妮拉·阿莫迪兄妹创立，现任首席 …"
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 3,
+          "query": "Claude Fable 5 Anthropic release model 2026",
+          "total_s": 12.38,
+          "search_s": 10.76,
+          "rerank_s": 1.62,
+          "merged": 13,
+          "engines": {
+            "www.baidu.com": 4,
+            "cn.bing.com": 6
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.9801598191261292,
+              "title": "Claude Fable 5 Anthropic release model 2026 - 百度图片",
+              "url": "https://my.oschina.net/u/9487999/blog/19699920",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.8812090158462524,
+              "title": "仅仅间隔11天,Anthropic发布新一代通用大模型Claude Fable 5",
+              "url": "https://www.163264.com/12847",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 3,
+              "rerank": 0.8410447239875793,
+              "title": "Claude Fable 5 - 百度百科",
+              "url": "https://claude5.com/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.8001174330711365,
+              "title": "Claude Fable 5四日惊魂",
+              "url": "https://zhuanlan.zhihu.com/p/2047998267544360794",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.7614942789077759,
+              "title": "Claude 中文版：Claude 4.5 国内使用指南～（支持 Claude ...",
+              "url": "https://www.claudezh.com/claude/claude-chinese.html",
+              "engine": "cn.bing.com",
+              "snippet": "9 小时之前 · Claude 是Anthropic最新发布的AI模型，具备顶尖的推理能力和多模态理解。立即访问Claude中文镜像站体验。"
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7302650213241577,
+              "title": "Claude（Anthropic发布的大型语言模型）_百度百科",
+              "url": "https://baike.baidu.com/item/Claude/62812102",
+              "engine": "cn.bing.com",
+              "snippet": "2024年3月发布Claude 3系列包含Opus、Sonnet和Haiku三个子模型，其中Opus在本科/研究生知识、数学等领域基准测试中表现优于GPT-4和Gemini 1.0 Ultra，支持百万Token上下文处理。 2024年10月 …"
+            },
+            {
+              "rank": 7,
+              "rerank": 0.6785780787467957,
+              "title": "Home \\ Anthropic",
+              "url": "https://www.anthropic.com/",
+              "engine": "cn.bing.com",
+              "snippet": "4 天之前 · Claude Opus 4.8 An upgrade to Opus across coding, agentic tasks, and professional work, with the consistency to handle long-running work."
+            },
+            {
+              "rank": 8,
+              "rerank": 0.6733958721160889,
+              "title": "Download Claude | Claude by Anthropic",
+              "url": "https://claude.com/download",
+              "engine": "cn.bing.com",
+              "snippet": "3 天之前 · Download Claude apps for Mac, Windows, iOS, and Android. Install extensions for Chrome, Excel, PowerPoint, and Slack."
+            },
+            {
+              "rank": 9,
+              "rerank": 0.6483740210533142,
+              "title": "Claude AI是什么？它与ChatGPT相比如何？ - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/7761530703",
+              "engine": "cn.bing.com",
+              "snippet": "2024年11月19日 · Claude AI与ChatGPT相比怎么样 Claude AI和ChatGPT是当前领先的人工智能对话模型，各有特色。Claude由Anthropic开发，强调对话的安全性和可控性，适用于需要高安全性的场 …"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.6081861257553101,
+              "title": "Claude",
+              "url": "https://claude.com/",
+              "engine": "cn.bing.com",
+              "snippet": "What is Claude and how does it work? Claude is an artificial intelligence, trained by Anthropic using Constitutional AI to be safe, accurate, and secure — the trusted assistant for you to do your best"
+            }
+          ],
+          "pollution": null
+        }
+      ],
+      "avg_total": 6.736666666666667,
+      "avg_search": 4.216666666666667,
+      "avg_rerank": 2.5233333333333334
+    },
+    "场景3_上海GPU": {
+      "title": "上海 AI 算力 / 国产 GPU 芯片",
+      "rounds": [
+        {
+          "round": 1,
+          "query": "上海 AI算力中心 国产GPU芯片 2026年最新进展",
+          "total_s": 30.37,
+          "search_s": 28.55,
+          "rerank_s": 1.82,
+          "merged": 12,
+          "engines": {
+            "www.baidu.com": 2,
+            "cn.bing.com": 8
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.8050834536552429,
+              "title": "算力新变局|深度",
+              "url": "https://xueqiu.com/5334485159/391039419?_ugc_source=ugcbaiducard",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.758256196975708,
+              "title": "【2026最新】上海景點Top15必去.宮廷宴.外灘.武康路.上海 ...",
+              "url": "https://kuolife.com/china-shanghai-attractions-mustgo/",
+              "engine": "cn.bing.com",
+              "snippet": "2026年5月8日 · 本文幫大家整理我2026上海自由行，實際有去上海景點，濃縮後得出，上海必去Top15景點：上海宮廷宴、上海迪士尼（是全球首個以動物方城市電影為主題的園區）、上海蘇州一日遊、上 …"
+            },
+            {
+              "rank": 3,
+              "rerank": 0.7528356909751892,
+              "title": "【2026上海景點】自由行必讀!TOP16上海經典/熱門/新景點推薦",
+              "url": "https://gowithmarkhazyl.com/must-visit-places-in-shanghai/",
+              "engine": "cn.bing.com",
+              "snippet": "6 天之前 · 身為中國一線直轄市的上海，黃浦江貫穿將上海分為浦東浦西，各自發展出迷人的景點，摩天大樓林立卻也同時有著百年歷史的建築，是個兼具現代摩登風格又充滿復古韻味的城市，想更了解上 …"
+            },
+            {
+              "rank": 4,
+              "rerank": 0.7434048652648926,
+              "title": "AI时代中国芯片突围战:硬核替代撞上“生态高墙”如何破局?",
+              "url": "http://www.chinadevelopment.com.cn/news/cj/2026/05/1996075.shtml",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.740689218044281,
+              "title": "上海市_百度百科",
+              "url": "https://baike.baidu.com/item/%E4%B8%8A%E6%B5%B7%E5%B8%82/127743",
+              "engine": "cn.bing.com",
+              "snippet": "截至2024年12月，上海市下辖16个区，常住人口2480.26万人；市人民政府驻地黄浦区人民大道200号。 上海市地处长江三角洲冲积平原，地势坦荡低平，属北亚热带季风气候，最大河流为黄浦江。 早 …"
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7277964949607849,
+              "title": "上海旅游指南和前往上海旅游-上海中国旅游官方网站",
+              "url": "https://www.meet-in-shanghai.net/tc/guide/",
+              "engine": "cn.bing.com",
+              "snippet": "2025年7月2日 · 常逛常新!免費打卡上海1000㎡超大聲音體驗空間! 上海EKA·天物這座由百年工業遺存蛻變而來的“露天建築博物館”，早已化身上海常逛常新的打卡地標。 最近還有將持續一個月的音樂節， …"
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7262750864028931,
+              "title": "2025上海旅游全攻略：一年去了5次魔都！全都是避坑大实话 ...",
+              "url": "https://zhuanlan.zhihu.com/p/23762942136",
+              "engine": "cn.bing.com",
+              "snippet": "2025年2月14日 · 上海，这座东方之珠，在2-3月终于摆脱了人从众的人群，散发着迷人的魅力。 作为一个去了上海五次的人，也是踩了不少的坑。 今天把上海的交通指南、行程规划、必打卡景点、美食 …"
+            },
+            {
+              "rank": 8,
+              "rerank": 0.7261781096458435,
+              "title": "上海旅游必去十大景点游玩攻略，2025年11月魔都十大必去 ...",
+              "url": "https://zhuanlan.zhihu.com/p/1974438659978720949",
+              "engine": "cn.bing.com",
+              "snippet": "2025年11月19日 · 【摘要】：本文小九为您精选上海十大必去景点与五大美食，结合2025年最新旅行数据与本地人私藏攻略，从外滩夜景到迪士尼童话世界，从豫园古韵到武康路海派风情，全方位解读魔 …"
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7235634326934814,
+              "title": "上海市文化和旅游局，上海中国官方旅游网站，上海旅游网站 ...",
+              "url": "https://www.meet-in-shanghai.net/tc/",
+              "engine": "cn.bing.com",
+              "snippet": "1 天前 · 上海市官方旅游网站是游客前往中国上海旅行以及从事企业激励旅游、会议、展览和活动（MICE）的企业规划和组织的实用权威指南。 网站涵盖上海地图、天气、航班、机场、火车、酒店 …"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.7192710638046265,
+              "title": "漫步上海 | 16个超好玩的景点，一天就够了_澎湃号·湃客_澎湃 ...",
+              "url": "https://www.thepaper.cn/newsDetail_forward_27506127",
+              "engine": "cn.bing.com",
+              "snippet": "2024年5月26日 · 崇明区 西沙国家湿地公园 崇明是上海的后花园，岛上的自然风光迤逦，不染纤尘。 西沙国家湿地公园就是其中之一，它是上海目前唯一具有自然潮汐现象和成片滩涂林地的自然湿地，传 …"
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 2,
+          "query": "国产GPU 砺算科技 壁仞 摩尔线程 2026 上市 7G100 BR100",
+          "total_s": 60.14,
+          "search_s": 59.13,
+          "rerank_s": 1.01,
+          "merged": 28,
+          "engines": {
+            "www.baidu.com": 5,
+            "www.sogou.com": 5
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.9267023801803589,
+              "title": "国产GPU性能逼近RTX 4060,2026年初消费级产品上市_显卡_什么值得买",
+              "url": "https://post.smzdm.com/p/a3m6rx0n/",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.9072651267051697,
+              "title": "壁仞科技首款通用GPU芯片BR100系列一次点亮成功-全球半导体观察",
+              "url": "https://www.dramx.com/News/IC/20220401-31182.html",
+              "engine": "www.sogou.com",
+              "snippet": "3月31日，壁仞科技官微宣布，公司首款通用GPU芯片BR100系列一次点亮成功。在核心性能设计标准上，BR100系列是国内算力最大的通用GPU芯片，直..."
+            },
+            {
+              "rank": 3,
+              "rerank": 0.9066333174705505,
+              "title": "国产GPU终于要来了!砺算这次真的要打破海外垄断? - 知乎",
+              "url": "https://zhuanlan.zhihu.com/p/2013854197519503480",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.898338258266449,
+              "title": "国产GPU上市潮:赛道火热背后,是真实力还是资本泡沫?-格隆汇",
+              "url": "https://www.gelonghui.com/p/3494024",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.8939197063446045,
+              "title": "770亿晶体管的中国第一算力通用GPU芯片！壁仞科技BR100亮相海外-...",
+              "url": "https://news.mydrivers.com/1/854/854559.htm",
+              "engine": "www.sogou.com",
+              "snippet": "8月9日，国内科技创新企业壁仞科技（Birentech）正式发布了BR100系列通用计算GPU，号称算力国内第一，多向指标媲美甚至超越国际旗舰产品。 当地..."
+            },
+            {
+              "rank": 6,
+              "rerank": 0.8932709097862244,
+              "title": "摩尔线程、壁仞科技,别上当了,带你看懂国产GPU谁更有价值? - 今...",
+              "url": "https://www.toutiao.com/article/7477422930826953266/",
+              "engine": "www.sogou.com",
+              "snippet": "其MTT S80显卡在游戏适配能力上处于国产领先地位。 壁仞科技BR100芯片已进入量产阶段，重点服务金融、科研等高端算力市场。 资本认可度 摩尔线程以..."
+            },
+            {
+              "rank": 7,
+              "rerank": 0.8821208477020264,
+              "title": "国产GPU新动作,砺算7G100 GPU现已对客户出样,号称对抗RTX ...",
+              "url": "https://www.bilibili.com/video/BV18TCXB6EHP/?spm_id_from=333.788.recommend_more_video.10",
+              "engine": "www.sogou.com",
+              "snippet": "砺算这个GPU还不错呀，国产独立显卡Arise2030首发测试（，国产GPU达到国际水准！摩尔线程已媲美RTX 4090、A100，国产GPU天花板来了？摩尔..."
+            },
+            {
+              "rank": 8,
+              "rerank": 0.8790172934532166,
+              "title": "自主研发BR100的壁仞科技,打破全球算力纪录,2023年IPO谋新篇 - ...",
+              "url": "https://www.toutiao.com/article/7257307858222498339/",
+              "engine": "www.sogou.com",
+              "snippet": "BR100的问世显示出壁仞科技在通用GPU领域的强大技术实力。这有助推动国产芯片在人工智能、区块链、云游戏等新兴应用领域的发展。壁仞科技未来的..."
+            },
+            {
+              "rank": 9,
+              "rerank": 0.8678425550460815,
+              "title": "国产GPU新秀砺算获5亿元融资:营收为零,投前估值35亿元!|gpu|显卡|...",
+              "url": "https://m.163.com/dy/article/K8C1HKMB0511838M.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 10,
+              "rerank": 0.8678163290023804,
+              "title": "国产GPU上市潮:赛道火热背后,是真实力还是资本泡沫?_财富号_东方...",
+              "url": "https://caifuhao.eastmoney.com/news/20260104185812329428000",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            }
+          ],
+          "pollution": null
+        },
+        {
+          "round": 3,
+          "query": "上海智算中心 2026 GPU国产替代 昇腾 壁仞 沐曦 天数智芯 最新",
+          "total_s": 2.96,
+          "search_s": 1.24,
+          "rerank_s": 1.72,
+          "merged": 27,
+          "engines": {
+            "www.baidu.com": 4,
+            "cn.bing.com": 5,
+            "www.bing.com": 1
+          },
+          "results": [
+            {
+              "rank": 1,
+              "rerank": 0.915199875831604,
+              "title": "国产GPU大爆发,上海成最大赢家!|智芯|gpu|上海市_网易订阅",
+              "url": "https://www.163.com/dy/article/KIRBRO760511DLVT.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 2,
+              "rerank": 0.8677661418914795,
+              "title": "国产算力的“上海时刻”:GPU企业密集上市,上海“芯”势力崛起...",
+              "url": "https://caifuhao.eastmoney.com/news/20260112171845622877340",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 3,
+              "rerank": 0.847315788269043,
+              "title": "AI算力竞速(中):国产GPU企业的集体冲锋与隐忧_腾讯新闻",
+              "url": "https://view.inews.qq.com/a/20260211A032C200",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 4,
+              "rerank": 0.7630484700202942,
+              "title": "上海仪电助力构建高水平智算云服务体系 上海市智算产业高质量发展...",
+              "url": "https://www.shanghai.gov.cn/nw31406/20260206/8a5501add55644cd90fe354c6ccf3b41.html",
+              "engine": "www.baidu.com",
+              "snippet": ""
+            },
+            {
+              "rank": 5,
+              "rerank": 0.7628253698348999,
+              "title": "南部档案 国际版 第1集-电视剧-高清视频在线观看-芒果TV",
+              "url": "https://www.mgtv.com/b/878850/24426686.html",
+              "engine": "cn.bing.com",
+              "snippet": "限时特惠 爸爸当家 第五季 乘风2026 炽夏 中餐厅·南洋拾光季 我们的宿舍·归心季 你好，星期六 耀眼 忙忙碌碌寻宝藏2 妻子的浪漫旅行2026 歌手2026 女画师 全网搜 首页 综艺 电视剧"
+            },
+            {
+              "rank": 6,
+              "rerank": 0.7599808573722839,
+              "title": "DeepSeek | 深度求索",
+              "url": "https://www.deepseek.com/",
+              "engine": "www.bing.com",
+              "snippet": "Apr 27, 2026 · 深度求索（DeepSeek），成立于2023年，专注于研究世界领先的通用人工智能底层模型与技术，挑战人工智能前沿性难题。基于自研训练框架、自建智算集群和万卡算力等资源，深度求索 …"
+            },
+            {
+              "rank": 7,
+              "rerank": 0.7531980276107788,
+              "title": "热映《南部档案》免费观看全集在线播放",
+              "url": "https://kandian.sina.com.cn/article_7857201856_1d45362c001906qbo0.html?from=ent&amp;subch=oent",
+              "engine": "cn.bing.com",
+              "snippet": "2026年6月13日 · 热映《南部档案》免费观看全集在线播放 [官方4K臻享],南部档案,《南部档案18》电视剧免费观看全集高清完整版,《南部档案18》电视剧全集在线免费观看高清完整版免费播放,电视剧《 …"
+            },
+            {
+              "rank": 8,
+              "rerank": 0.7357950806617737,
+              "title": "《南部档案》 - 短剧高清在线观看 | 西瓜视频",
+              "url": "https://m.ixigua.com/dx/7651270375480839430",
+              "engine": "cn.bing.com",
+              "snippet": "2026年6月14日 · 《南部档案》 - 短剧高清在线观看,于2026年6月14日上线。西瓜视频为您提供高清视频，画面清晰、播放流畅，看丰富、高质量视频就上西瓜视频。"
+            },
+            {
+              "rank": 9,
+              "rerank": 0.7323814034461975,
+              "title": "《南部档案》全集在线观看-电视剧星辰影院",
+              "url": "https://kandian.sina.com.cn/article_7857201856_1d45362c001906rrzy.html?from=ent&amp;subch=oent",
+              "engine": "cn.bing.com",
+              "snippet": "2026年6月14日 · 《南部档案》全集在线观看-电视剧星辰影院 段奥娟,张新成,袁一琦,欧阳娣娣,赵兆,徐艺洋,希林娜依·高,钟辰乐,代露娃,许馨文,王安宇,张颜齐,谢可寅,邵子恒,姚弛,颜安,吴俊霆,鹭卓,王晓赟子, …"
+            },
+            {
+              "rank": 10,
+              "rerank": 0.730842113494873,
+              "title": "《南部档案》-电视剧免费在线全集观看-太和影院",
+              "url": "https://www.taihe100.com/v/49465.html",
+              "engine": "cn.bing.com",
+              "snippet": "2026年6月15日 · 常见问题 电视剧《南部档案》豆瓣评分多少？ 口碑怎么样？ 暂无豆瓣评分，但作为南派三叔奇幻IP改编，民国南洋探案题材备受期待。 推荐观看《老九门》——同为南派三叔作品改编的 …"
+            }
+          ],
+          "pollution": null
+        }
+      ],
+      "avg_total": 31.156666666666666,
+      "avg_search": 29.64,
+      "avg_rerank": 1.5166666666666666
+    }
+  },
+  "engine_totals": {
+    "www.baidu.com": 41,
+    "www.sogou.com": 14,
+    "cn.bing.com": 34,
+    "www.bing.com": 1
+  }
+}
