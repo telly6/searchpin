@@ -1,28 +1,14 @@
 #!/usr/bin/env python3
 """
-MiniSearch MCP Server (stdio transport)
+Searchpin MCP Server (stdio transport)
 AI agent launches this as a subprocess. Reads JSON-RPC from stdin, writes to stdout.
-Config loaded from ~/.minisearch/config.json
 """
 
 import json
-import os
 import sys
 
-from search_engine import SearchEngine, MCP_TOOLS, PRODUCT_NAME, DEFAULT_MODEL_NAME
-
-CONFIG_DIR = os.path.expanduser("~/.minisearch")
-CONFIG_PATH = os.path.join(CONFIG_DIR, "config.json")
-
-
-def load_config():
-    try:
-        if os.path.exists(CONFIG_PATH):
-            with open(CONFIG_PATH) as f:
-                return json.load(f)
-    except Exception:
-        pass
-    return {}
+from searchpin.config import DEFAULT_MODEL_NAME, PRODUCT_NAME
+from searchpin.engine import MCP_TOOLS, SearchEngine
 
 
 def build_response(rid, result):
@@ -39,11 +25,14 @@ def handle_mcp_request(body, engine):
     params = body.get("params", {})
 
     if method == "initialize":
-        return build_response(rid, {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {"tools": {}},
-            "serverInfo": {"name": PRODUCT_NAME, "version": "1.0.0"},
-        })
+        return build_response(
+            rid,
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": PRODUCT_NAME, "version": "1.0.0"},
+            },
+        )
     elif method == "notifications/initialized":
         return None
     elif method == "ping":
@@ -58,44 +47,55 @@ def handle_mcp_request(body, engine):
         tool_name = params.get("name", "")
         args = params.get("arguments", {})
         if tool_name == "web_search":
-            result = engine.search(args.get("query", ""), args.get("max_results", 5), args.get("freshness"))
+            print(
+                f"[search_server] args keys={list(args.keys())!r} "
+                f"topic={args.get('topic')!r} "
+                f"exclude_domains={args.get('exclude_domains')!r}",
+                file=sys.stderr,
+                flush=True,
+            )
+            result = engine.search(
+                args.get("query", ""),
+                args.get("max_results", 10),
+                args.get("freshness"),
+                topic=args.get("topic"),
+                exclude_domains=args.get("exclude_domains"),
+                include_domains=args.get("include_domains"),
+            )
         elif tool_name == "web_fetch":
-            result = engine.fetch(args.get("url", ""), args.get("max_length", 30000))
-        elif tool_name == "session_history":
-            result = engine.session_history(args.get("keyword"), args.get("max_results", 10))
+            result = engine.fetch(args.get("url", ""))
         else:
             return build_error(rid, -32601, f"Unknown tool: {tool_name}")
-        return build_response(rid, {
-            "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2)}],
-        })
+        return build_response(
+            rid,
+            {
+                "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2)}],
+            },
+        )
     else:
         return build_error(rid, -32601, f"Method not found: {method}")
 
 
 def main():
-    cfg = load_config()
+    import argparse
 
-    model_name = cfg.get("model_name", DEFAULT_MODEL_NAME)
-    max_workers = cfg.get("max_workers", 3)
-    embedding_mode = cfg.get("embedding_mode", "local")
-    api_endpoint = cfg.get("api_endpoint", "")
-    api_key = cfg.get("api_key", "")
-    api_model = cfg.get("api_model", "")
+    parser = argparse.ArgumentParser(description="Searchpin MCP Server")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Embedding model name (default: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)",
+    )
+    args = parser.parse_args()
 
-    print(f"[{PRODUCT_NAME}] starting engine (stdio mode)...",
-          file=sys.stderr, flush=True)
+    print(f"[{PRODUCT_NAME}] starting engine (stdio mode)...", file=sys.stderr, flush=True)
 
     engine = SearchEngine(
-        model_name=model_name,
-        max_workers=max_workers,
-        embedding_mode=embedding_mode,
-        api_endpoint=api_endpoint or None,
-        api_key=api_key or None,
-        api_model=api_model or None,
+        model_name=args.model or DEFAULT_MODEL_NAME,
+        max_workers=3,
     )
 
-    print(f"[{PRODUCT_NAME}] engine ready, waiting for requests on stdin",
-          file=sys.stderr, flush=True)
+    print(f"[{PRODUCT_NAME}] engine ready, waiting for requests on stdin", file=sys.stderr, flush=True)
 
     for line in sys.stdin:
         line = line.strip()

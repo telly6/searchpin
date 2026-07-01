@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "searchpin"
+version = "1.0.0"
+description = "Self-hosted web search for AI agents — zero API keys, embedding re-rank, multi-engine parallel search"
+authors = [
+    {name = "Searchpin Contributors"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "fastembed>=0.3.0",
+    "numpy",
+    "brotli",
+]
+
+[project.scripts]
+searchpin-server = "search_server:main"
+
+[project.urls]
+Homepage = "https://github.com/telly6/searchpin"
+Repository = "https://github.com/telly6/searchpin"
+Issues = "https://github.com/telly6/searchpin/issues"
+
+[tool.setuptools.packages.find]
+include = ["searchpin", "searchpin.*"]
+
+[tool.setuptools]
+py-modules = ["search_server"]
+
+# ── pytest ──────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+# ── ruff (lint + format) ────────────────────────────────────
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = ["dev/", "proxy.py", ".venv/", "__pycache__/"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+]
+ignore = ["E501"]  # line length — logged f-strings are intentional
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

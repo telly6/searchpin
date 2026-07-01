@@ -25,11 +25,18 @@ data/
 *.log
 /tmp/
 
-# Model packaging (uploaded to GitHub Releases, not the repo)
-packaged_models/
 
-# MiniSearch build artifacts
-MiniSearch.icns
-MiniSearch.iconset/
-*.log
-/tmp/
+# Archive (deprecated engines — keep out of all tooling)
+claude-proxy-google-archive/
+
+# Test cache
+.pytest_cache/
+
+# Local dev tools — never push to public repo
+proxy.py
+CLAUDE.md
+dev/
+ROADMAP.md
+DEV-NOTES.md
+session_history_server.py
+validate_rendering.py
