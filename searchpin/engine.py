@@ -11,11 +11,9 @@ import http.client
 import json
 import os
 import re
-import shutil
 import socket
 import ssl
 import sys
-import tarfile
 import threading
 import time
 import urllib.parse
@@ -526,14 +524,11 @@ class SearchEngine:
 
     # ── Embedding model ──────────────────────────────────────
 
-    GITHUB_MODELS_URL = "https://github.com/telly6/searchpin/releases/download/models-v1"
-
     def _load_local_model(self):
         """Load embedding model with layered fallback:
         1. Use local_files_only — fastembed checks all cache locations
-        2. Download from GitHub Releases → extract tar.gz → use
-        3. Download from HuggingFace via fastembed → use
-        4. Scan cache for any loadable model as last resort
+        2. Download from HuggingFace via fastembed → use
+        3. Scan cache for any loadable model as last resort
         """
         model_slug = self.model_name.split("/")[-1]
         cache_dir = self._fastembed_cache_dir()
@@ -550,15 +545,7 @@ class SearchEngine:
         except Exception:
             print(f"[{PRODUCT_NAME}] not found in local cache", file=sys.stderr, flush=True)
 
-        # ── Layer 2: download from GitHub Releases ──
-        if self._download_from_github(model_slug, model_dir):
-            return TextEmbedding(
-                model_name=self.model_name,
-                specific_model_path=str(model_dir),
-                local_files_only=True,
-            )
-
-        # ── Layer 3: download via fastembed (HF mirror) ──
+        # ── Layer 2: download via fastembed (HF mirror) ──
         print(f"[{PRODUCT_NAME}] trying HuggingFace download...", file=sys.stderr, flush=True)
         try:
             return TextEmbedding(
@@ -574,55 +561,6 @@ class SearchEngine:
     def _fastembed_cache_dir():
         """Unified cache directory matching fastembed's native location."""
         return Path(os.path.expanduser("~/.cache/huggingface/hub"))
-
-    def _download_from_github(self, model_slug, model_dir):
-        """Download model tar.gz from GitHub Releases and extract.
-        Uses urllib for maximum reliability — no DNS hacks, no custom HTTP.
-        Returns True on success, False on any failure."""
-        import urllib.request
-
-        targz_path = model_dir.parent / f"{model_slug}.tar.gz"
-        url = f"{self.GITHUB_MODELS_URL}/{model_slug}.tar.gz"
-
-        try:
-            print(f"[{PRODUCT_NAME}] downloading from GitHub: {url}", file=sys.stderr, flush=True)
-
-            req = urllib.request.Request(
-                url,
-                headers={
-                    "User-Agent": "Searchpin/1.0",
-                    "Accept": "application/octet-stream",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                if resp.status != 200:
-                    print(f"[{PRODUCT_NAME}] GitHub returned {resp.status}", file=sys.stderr, flush=True)
-                    return False
-                body = resp.read()
-
-            targz_path.write_bytes(body)
-            print(
-                f"[{PRODUCT_NAME}] downloaded {len(body) / 1024 / 1024:.0f}MB, extracting...",
-                file=sys.stderr,
-                flush=True,
-            )
-
-            with tarfile.open(targz_path, "r:gz") as tar:
-                tar.extractall(path=model_dir.parent)
-
-            targz_path.unlink()
-
-            if model_dir.exists() and any(model_dir.iterdir()):
-                print(f"[{PRODUCT_NAME}] model extracted to {model_dir}", file=sys.stderr, flush=True)
-                return True
-            return False
-        except Exception as e:
-            print(f"[{PRODUCT_NAME}] GitHub download failed: {e}", file=sys.stderr, flush=True)
-            if targz_path.exists():
-                targz_path.unlink()
-            if model_dir.exists():
-                shutil.rmtree(model_dir)
-            return False
 
     def _fallback_embedding(self):
         """Last-resort: scan cache for any loadable model."""

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "searchpin"
 version = "1.0.0"
-description = "Self-hosted web search for AI agents — zero API keys, embedding re-rank, multi-engine parallel search"
+description = "Commercial-grade search quality. Zero keys. Zero bills."
 authors = [
     {name = "Searchpin Contributors"}
 ]
@@ -30,6 +30,7 @@ dependencies = [
 
 [project.scripts]
 searchpin-server = "search_server:main"
+searchpin-setup = "searchpin._model_setup:main"
 
 [project.urls]
 Homepage = "https://github.com/telly6/searchpin"

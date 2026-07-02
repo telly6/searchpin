@@ -17,8 +17,7 @@ Self-hosted web search for AI agents — zero API keys, zero cost. `pip install 
 ## Quick Start
 
 ```bash
-pip install searchpin
-searchpin-server
+pip install searchpin && searchpin-setup
 ```
 
 ## Configuration
