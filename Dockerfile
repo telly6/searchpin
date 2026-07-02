@@ -11,10 +11,10 @@ COPY pyproject.toml ./
 COPY searchpin/ ./searchpin/
 COPY search_server.py ./
 
-# Install dependencies
-# Note: embedding model is NOT pre-downloaded — it will be
-# fetched from HuggingFace on first container start.
-RUN pip install --no-cache-dir .
+# Install dependencies and pre-download the embedding model.
+# Model is baked into the image — zero delay on first container start.
+RUN pip install --no-cache-dir . && \
+    searchpin-setup
 
 # ── Runtime stage ─────────────────────────────────────────
 FROM python:3.11-slim
@@ -26,6 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /root/.cache/huggingface /root/.cache/huggingface
 
 ENV SEARCHPIN_TIMING_LOG=""
 

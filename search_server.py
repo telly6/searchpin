@@ -7,6 +7,7 @@ AI agent launches this as a subprocess. Reads JSON-RPC from stdin, writes to std
 import json
 import sys
 
+from searchpin import __version__
 from searchpin.config import DEFAULT_MODEL_NAME, PRODUCT_NAME
 from searchpin.engine import MCP_TOOLS, SearchEngine
 
@@ -30,7 +31,7 @@ def handle_mcp_request(body, engine):
             {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {"tools": {}},
-                "serverInfo": {"name": PRODUCT_NAME, "version": "1.0.0"},
+                "serverInfo": {"name": PRODUCT_NAME, "version": __version__},
             },
         )
     elif method == "notifications/initialized":

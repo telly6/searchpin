@@ -61,17 +61,6 @@ Or manually, add to `.vscode/mcp.json`:
 docker run -i --rm ghcr.io/telly6/searchpin:latest
 ```
 
-```json
-{
-  "mcpServers": {
-    "Searchpin": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "ghcr.io/telly6/searchpin:latest"]
-    }
-  }
-}
-```
-
 ### Python API
 
 ```python
