@@ -9,8 +9,7 @@ import os
 import sys
 import warnings
 
-
-MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+from searchpin.config import DEFAULT_MODEL_NAME as MODEL_NAME
 
 # 3-line colored output — no heavy deps
 GREEN = "\033[32m"
