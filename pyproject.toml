@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "searchpin"
-version = "1.0.1"
+version = "1.0.2"
 description = "Commercial-grade search quality. Zero keys. Zero bills."
 authors = [
     {name = "Searchpin Contributors"}
