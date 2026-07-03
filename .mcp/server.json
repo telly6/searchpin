@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.telly6/searchpin",
+  "description": "Self-hosted web search for AI agents — zero API keys, embedding rerank, multi engine parallel search",
+  "version": "1.0.3",
+  "repository": {
+    "url": "https://github.com/telly6/searchpin",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "searchpin",
+      "version": "1.0.3",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

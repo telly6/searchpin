@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.telly6/searchpin -->
 # Searchpin
 
 [![PyPI version](https://img.shields.io/pypi/v/searchpin)](https://pypi.org/project/searchpin/)
