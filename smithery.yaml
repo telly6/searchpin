@@ -1,11 +1,14 @@
-# Smithery.ai configuration — https://smithery.ai/docs/config#smitheryyaml
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
 startCommand:
   type: stdio
   configSchema:
+    # JSON Schema defining the configuration options for the MCP.
     type: object
     properties: {}
-  commandFunction: |-
-    (config) => ({
-      "command": "python",
-      "args": ["-m", "searchpin"]
-    })
+    description: No configuration required. Results are reranked via embedding model on first use.
+  commandFunction:
+    # A function that produces the CLI command to start the MCP on stdio.
+    |-
+    (config) => ({ command: 'uvx', args: ['--from', 'searchpin', 'searchpin-server'] })
+  exampleConfig: {}
