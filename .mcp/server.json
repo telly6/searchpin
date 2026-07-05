@@ -1,8 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.telly6/searchpin",
-  "description": "Self-hosted web search for AI agents — zero API keys, embedding rerank, multi engine parallel search",
-  "version": "1.0.5",
+  "title": "Searchpin — Free Web Search for AI Agents",
+  "description": "Free web search for AI agents — multi-engine parallel search, smart ranking, no sign-up, no limits",
+  "version": "1.0.7",
   "repository": {
     "url": "https://github.com/telly6/searchpin",
     "source": "github"
