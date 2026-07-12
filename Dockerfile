@@ -11,6 +11,10 @@ COPY pyproject.toml ./
 COPY searchpin/ ./searchpin/
 COPY search_server.py ./
 
+# Use HuggingFace official endpoint for Docker builds (Glama/GitHub Actions run overseas).
+# searchpin defaults to hf-mirror.com at runtime for China users — no impact on them.
+ENV HF_ENDPOINT=https://huggingface.co
+
 # Install dependencies and pre-download the embedding model.
 # Model is baked into the image — zero delay on first container start.
 RUN pip install --no-cache-dir . && \
