@@ -67,12 +67,10 @@ def handle_mcp_request(body, engine):
             result = engine.fetch(args.get("url", ""))
         else:
             return build_error(rid, -32601, f"Unknown tool: {tool_name}")
-        return build_response(
-            rid,
-            {
-                "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2)}],
-            },
-        )
+        payload = {"content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2)}]}
+        if result.get("error"):
+            payload["isError"] = True
+        return build_response(rid, payload)
     else:
         return build_error(rid, -32601, f"Method not found: {method}")
 

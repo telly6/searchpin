@@ -29,6 +29,8 @@ No account registration, no API key application, no usage limits. No dependency 
 
 Built-in SSR content extraction can parse pages rendered by Next.js, Nuxt, and similar frameworks, and extract JSON-LD structured data and microdata. Plain HTML scraping gets nothing from these sites.
 
+`web_fetch` also detects PDFs by content type or file signature and extracts page-labelled text locally. Unreadable, encrypted, or image-only PDFs return an explicit error instead of binary garbage; OCR is not included. Extraction is limited to 25 MiB, 200 pages, and 2 million text characters.
+
 ### 🛡️ Pollution Detection + Cross-Verification
 
 Automatically detects and flags results unrelated to your query. Four independent search engines provide cross-verifiable results, enabling your LLM to corroborate information across sources for more credible answers.

@@ -8,6 +8,7 @@ Zero external API keys required.
 import concurrent.futures
 import gzip
 import http.client
+import io
 import json
 import os
 import re
@@ -33,6 +34,10 @@ from searchpin.config import (
 )
 from searchpin.quality import quality_score
 from searchpin.structured_extract import process as structured_extract_process
+
+PDF_MAX_BYTES = 25 * 1024 * 1024
+PDF_MAX_PAGES = 200
+PDF_MAX_TEXT_CHARS = 2_000_000
 
 MCP_TOOLS = [
     {
@@ -201,6 +206,8 @@ MCP_TOOLS = [
         "description": (
             "Fetch a URL and return clean, extracted text content (boilerplate, ads, and nav removed). "
             "Use to read articles, documentation pages, or API responses in full.\n"
+            "PDF text layers are extracted locally with page labels; unreadable PDFs return an explicit error. "
+            "OCR is not included.\n"
             "For broad queries, use web_search first, then fetch specific URLs from its results.\n"
             "After fetching, look for technical terms, names, or references you can use "
             "as keywords for a better follow-up search.\n\n"
@@ -1163,6 +1170,33 @@ class SearchEngine:
         """Fetch and return the text content of a URL."""
         return self._do_web_fetch(url)
 
+    @staticmethod
+    def _extract_pdf(body):
+        """Read the original PDF bytes; never decode a binary document as HTML."""
+        from pypdf import PdfReader
+
+        if len(body) > PDF_MAX_BYTES:
+            raise ValueError(f"PDF exceeds the {PDF_MAX_BYTES // (1024 * 1024)} MiB extraction limit")
+        reader = PdfReader(io.BytesIO(body))
+        if reader.is_encrypted:
+            raise ValueError("PDF is encrypted; an unencrypted copy is required")
+        if len(reader.pages) > PDF_MAX_PAGES:
+            raise ValueError(f"PDF exceeds the {PDF_MAX_PAGES}-page extraction limit")
+
+        parts = []
+        text_chars = 0
+        for number, page in enumerate(reader.pages, 1):
+            text = (page.extract_text() or "").strip()
+            if text:
+                part = f"## Page {number}\n\n{text}"
+                text_chars += len(part)
+                if text_chars > PDF_MAX_TEXT_CHARS:
+                    raise ValueError(f"PDF text exceeds the {PDF_MAX_TEXT_CHARS}-character extraction limit")
+                parts.append(part)
+        if not parts:
+            raise ValueError("PDF contains no extractable text; image-only or scanned pages may require OCR")
+        return "\n\n".join(parts)
+
     def _do_web_fetch(self, url):
         """Fetch a URL with a two-tier runtime-learned strategy cache.
 
@@ -1231,6 +1265,30 @@ class SearchEngine:
                 "_timing": {"total": round(_fetch_elapsed, 2)},
             }
 
+        # PDF bytes need their own reader BEFORE HTML quality checks or decoding.
+        # MIME handles extension-less URLs; the signature handles missing/wrong
+        # MIME. A .pdf URL serving HTML keeps the existing webpage path.
+        ct = resp.headers.get("Content-Type", "")
+        media_type = ct.split(";", 1)[0].strip().lower()
+        if media_type == "application/pdf" or body.lstrip().startswith(b"%PDF-"):
+            try:
+                if not 200 <= status < 300:
+                    raise ValueError(f"PDF download returned HTTP {status}")
+                text = self._extract_pdf(body)
+                error = None
+                self._fetch_strategy[host] = ("ok", time.time())
+            except Exception as exc:
+                text = ""
+                error = f"PDF text extraction failed: {exc}"
+                # A bad document is not evidence that its entire host is blocked.
+            return {
+                "status": status,
+                "content_type": ct,
+                "body": text,
+                "error": error,
+                "_timing": {"total": round(time.time() - _fetch_start, 2)},
+            }
+
         # ── Quality check → block detection ─────────────────
         if self._http_blocked(status, body, host):
             # Mark as blocked in strategy cache (2h TTL)
@@ -1249,7 +1307,6 @@ class SearchEngine:
         # ── Normal extraction (bare HTTP succeeded) ───────────
         self._fetch_strategy[host] = ("ok", time.time())
 
-        ct = resp.headers.get("Content-Type", "")
         charset = "utf-8"
         if "charset=" in ct:
             charset = ct.split("charset=")[-1].split(";")[0].strip()
