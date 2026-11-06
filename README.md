@@ -17,6 +17,8 @@ Self-hosted web search for AI agents — zero API keys, zero cost. In 2026, the 
 
 Defaults to **Baidu, Sogou, Bing CN, and Bing Intl** — four search engines queried in parallel. Works natively within China's network, no proxy or VPN needed. Most overseas alternatives rely on Google, DuckDuckGo, or Brave, which are largely inaccessible inside China.
 
+One running server sends Baidu searches at least 20 seconds apart. A Baidu captcha pauses Baidu for 10 minutes. A Sogou challenge pauses Sogou for 60 seconds, then 120 seconds on consecutive challenges. Other engines remain eligible; a search skips a paused engine without waiting for it. In `web_search`, `search_pages[].engines` reports which engines ran or were skipped, and `retry_after_seconds` reports the local time remaining. The next eligible search tests recovery; the timer does not guarantee that the upstream engine has unblocked access.
+
 ### 🧠 Semantic Re-ranking — a Differentiator Few Offer
 
 Results from all four engines are not simply concatenated. They are merged and re-ranked by an embedding model based on semantic similarity to the query. What your AI receives is a curated list of high-quality results, not a pile of noisy links. Among free MCP search servers, very few offer this capability.

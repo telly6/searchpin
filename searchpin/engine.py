@@ -8,8 +8,11 @@ Zero external API keys required.
 import concurrent.futures
 import gzip
 import http.client
+from http.cookiejar import CookieJar, DefaultCookiePolicy
+from urllib.request import Request
 import io
 import json
+import math
 import os
 import re
 import socket
@@ -25,15 +28,37 @@ from urllib.parse import urlparse
 import numpy as np
 from fastembed import TextEmbedding
 
-from searchpin.backends import build_backends
+from searchpin.backends import (
+    bing_query_matches,
+    build_backends,
+    domain_key,
+    focused_query,
+    normalize_domains,
+    filter_headword_drift,
+    prep_query,
+    scoped_query,
+    simple_site,
+    site_operators,
+    site_path_key,
+    url_key,
+    within_domain,
+)
 from searchpin.config import (
+    BAIDU_CAPTCHA_COOLDOWN_SECONDS,
+    BAIDU_SEARCH_INTERVAL_SECONDS,
     DEFAULT_MODEL_NAME,
     DOH_ENDPOINTS,
     PRODUCT_NAME,
+    SOGOU_CHALLENGE_INITIAL_SECONDS,
+    SOGOU_CHALLENGE_MAX_SECONDS,
     TIMING_LOG_PATH,
 )
 from searchpin.quality import quality_score
 from searchpin.structured_extract import process as structured_extract_process
+
+def _new_cookie_jar():
+    return CookieJar(policy=DefaultCookiePolicy(strict_ns_domain=DefaultCookiePolicy.DomainStrictNonDomain))
+
 
 PDF_MAX_BYTES = 25 * 1024 * 1024
 PDF_MAX_PAGES = 200
@@ -46,6 +71,9 @@ MCP_TOOLS = [
             "Search the web via multiple engines (Baidu, Sogou, Bing CN, Bing Intl). "
             "Returns ranked titles, URLs, and snippets "
             "(no full page content — use web_fetch to get the full text of any result). "
+            f"Baidu searches are spaced by at least {BAIDU_SEARCH_INTERVAL_SECONDS} seconds per server process. "
+            f"A Baidu captcha pauses only Baidu for {BAIDU_CAPTCHA_COOLDOWN_SECONDS} seconds; other engines can still return results. "
+            "If search_pages reports off_topic_headword, the source returned dictionary entries about only part of the query. Refine the search using distinct terms, another language or an official domain. HTTP errors are reported in http_status. In search_pages, paced means the local interval skipped a source; cooldown means it is temporarily paused. "
             "Results re-ranked by embedding similarity — the top results are the most relevant.\n\n"
             "Iterative search is normal: search → read → refine → search → read → synthesize. "
             "Search returns only titles + snippets. Read snippets to identify promising results, "
@@ -59,7 +87,7 @@ MCP_TOOLS = [
             "If search results are all irrelevant (wrong topic, wrong domain, "
             "generic encyclopedia entries, piracy sites, brand pages, file format tools, "
             "or dictionary entries), DO NOT conclude the information is unavailable. "
-            "The fix is almost always a query reformulation. The most common root cause is "
+            "Try a more specific query or a different source. One possible cause is "
             "Bing's tokenizer splitting your query words into fragments that collide with "
             "unrelated content. Replace fragile/generic terms with INSEPARABLE identifiers — "
             "proper nouns, compound terms, subdomain names, or acronyms that the tokenizer "
@@ -70,7 +98,7 @@ MCP_TOOLS = [
             "  - A car query: '全固态电池量产线' not 'solid state battery'\n"
             "  - A finance query: 'USDJPY exchange rate' not 'yen dollar'\n"
             "  - A programming query: 'rustc 1.87 changelog' not 'Rust release notes'\n"
-            "  - FOR CHINESE: no spaces around Chinese chars! '2026年新能源汽车补贴' ✓, '新能源汽车补贴 2026' ✗\n\n"
+            "  - Keep site:, filetype:, and quoted phrases separate from neighbouring words.\n\n"
             "SEARCH STRATEGY (patterns drawn from real-world use):\n\n"
             '1. DATE TERMS HIJACK QUERIES — Putting year numbers or month names ("2026年", '
             '"June") directly in query text often backfires: the engine weights them as the '
@@ -112,8 +140,8 @@ MCP_TOOLS = [
             'thresholds ("四十度"), or named entities ("台风蔷薇").\n'
             "  - Abstract: '2026年极端天气气候灾害' → only dictionaries & retrospectives\n"
             "  - Operational: '暴雨橙警 应急响应 中央气象台' → nmc.cn real-time alerts\n"
-            "  This is not a data-coverage problem. The documents exist in the index. "
-            "They just use a different vocabulary than you searched for.\n\n"
+            "  If a scoped search has no matches, the sampled results may not cover the document. "
+            "Try a title, identifier or official document link when available.\n\n"
             "⚡ NUMERIC DATA CROSS-VERIFICATION:\n"
             "- When a critical number appears in one result, confirm it against "
             "at least one other source before accepting it as fact. Different "
@@ -182,7 +210,9 @@ MCP_TOOLS = [
                         "Limit results to ONLY these domains (whitelist). "
                         "Use when you want results from specific sources "
                         "(e.g. ['docs.python.org', 'python.org'] for Python docs only). "
-                        "Applied before re-ranking. Empty/omitted = no restriction. "
+                        "Sends a site-restricted query and checks every returned URL against the allowlist. "
+                        "Sparse results may trigger one more batch with the original terms, a precise identifier, "
+                        "or the next page. Empty means no match in the sampled pages. Empty/omitted = no restriction. "
                         "Supplied by the LLM at runtime — no hardcoded list."
                     ),
                 },
@@ -288,13 +318,17 @@ class SearchEngine:
 
         # ── Per-engine session & rate limit ──
         # Persistent cookies per host (Baidu session, Sogou session, etc.)
-        self._host_cookies = {}  # host → cookie string
+        self._host_cookies = {}  # search provider → CookieJar
         self._host_cookies_lock = threading.Lock()
         # Per-engine backoff: host → earliest time next request allowed
         self._engine_backoff_until = {}
         self._engine_backoff_lock = threading.Lock()
         # Per-engine consecutive penalty count (doubled on each failure)
         self._engine_backoff_secs = {}  # host → current penalty seconds
+        self._engine_recovery_probes = set()  # at most one retry when a host cooldown expires
+
+        self._baidu_next_search_at = 0.0
+        self._baidu_search_active = False
 
         # ── Embedding model ──
         if embedding_mode == "local":
@@ -383,6 +417,21 @@ class SearchEngine:
 
     # ── HTTP ────────────────────────────────────────────────
 
+    @staticmethod
+    def _search_challenge_url(host, location):
+        try:
+            url = urlparse(urllib.parse.urljoin(f"https://{host}/", location or ""))
+            if host == "www.baidu.com":
+                return url.hostname == "wappass.baidu.com"
+            if host == "www.sogou.com":
+                return url.hostname in ("antispider.sogou.com", "captcha.sogou.com") or (
+                    url.hostname in ("sogou.com", "www.sogou.com")
+                    and url.path.lstrip("/").partition("/")[0] in ("antispider", "captcha")
+                )
+        except ValueError:
+            pass
+        return False
+
     def _http_get(
         self,
         host,
@@ -396,6 +445,7 @@ class SearchEngine:
         force_doh=False,
         simple_headers=False,
         force_tls12=False,
+        stop_at_challenge=False,
     ):
         """DoH-resolved HTTP/HTTPS GET.
 
@@ -406,7 +456,7 @@ class SearchEngine:
 
         _http_start = time.time()
         use_ssl = port == 443
-        _jar = cookies
+        jar = cookies if cookies is not None else _new_cookie_jar()
 
         # Percent-encode any unicode in the path
         path = urllib.parse.quote(path, safe="/?=&:%")
@@ -455,36 +505,27 @@ class SearchEngine:
                         "DNT": "1",
                     }
                 )
-            if _jar:
-                _headers["Cookie"] = _jar
+            scheme = "https" if use_ssl else "http"
+            cookie_request = Request(f"{scheme}://{host}{path}")
+            jar.add_cookie_header(cookie_request)
+            outgoing_cookies = cookie_request.get_header("Cookie")
+            if outgoing_cookies:
+                _headers["Cookie"] = outgoing_cookies
             if extra_headers:
                 _headers.update(extra_headers)
 
             conn.request("GET", path, headers=_headers)
             resp = conn.getresponse()
 
-            # Collect Set-Cookie headers across redirects
-            set_cookies = resp.headers.get_all("Set-Cookie") or resp.headers.get("Set-Cookie")
-            if set_cookies:
-                if isinstance(set_cookies, list):
-                    set_cookies = ", ".join(set_cookies)
-                new_parts = []
-                for part in set_cookies.split(","):
-                    part = part.strip()
-                    kv = part.split(";")[0].strip()
-                    if "=" in kv:
-                        new_parts.append(kv)
-                if new_parts:
-                    if _jar:
-                        _jar = _jar + "; " + "; ".join(new_parts)
-                    else:
-                        _jar = "; ".join(new_parts)
+            # Replace a previous cookie with the same (domain, path, name).
+            # The jar also applies expiry and scope on each redirect.
+            jar.extract_cookies(resp, cookie_request)
 
             if follow_redirects and resp.status in (301, 302, 303, 307):
                 location = resp.headers.get("Location", "")
                 conn.close()
-                if not location:
-                    return resp, b"", _jar
+                if not location or (stop_at_challenge and self._search_challenge_url(host, location)):
+                    return resp, b"", jar
                 parsed = urlparse(location)
                 if parsed.netloc:
                     host = parsed.netloc.split(":")[0]
@@ -499,6 +540,7 @@ class SearchEngine:
                 print(f"[HTTP] redirect → {host}{path}", file=sys.stderr, flush=True)
                 continue
 
+            resp.url = f"{'https' if use_ssl else 'http'}://{host}{path}"
             body = resp.read()
             # Decompress if server sent compressed response
             content_encoding = resp.headers.get("Content-Encoding", "")
@@ -521,13 +563,13 @@ class SearchEngine:
                 f"[TIMING] http_get {host}{path[:60]} dns={_dns_time * 1000:.0f}ms total={_http_elapsed:.0f}ms status={resp.status}\n"
             )
             conn.close()
-            return resp, body, _jar
+            return resp, body, jar
 
         _http_elapsed = (time.time() - _http_start) * 1000
         SearchEngine._log_timing(
             f"[TIMING] http_get {host}{path[:60]} dns={_dns_time * 1000:.0f}ms total={_http_elapsed:.0f}ms status={resp.status}\n"
         )
-        return resp, body, _jar
+        return resp, body, jar
 
     # ── Embedding model ──────────────────────────────────────
 
@@ -775,11 +817,9 @@ class SearchEngine:
         Args:
             topic: 'general' (default), 'news' — uses Bing News vertical
             exclude_domains: optional list of domains to filter out,
-                             applied BEFORE the embedding re-rank.
-                             Supplied by the LLM at runtime; NO list
-                             is maintained in code.
-            include_domains: optional list of domains to restrict results to
-                             (whitelist). Applied BEFORE re-rank.
+                             applied before the embedding re-rank.
+            include_domains: optional allowed hostnames. Used during retrieval
+                             and checked against every result before ranking.
         """
         return self._do_web_search(
             query,
@@ -798,11 +838,10 @@ class SearchEngine:
         topic=None,
         exclude_domains=None,
         include_domains=None,
-        _retry_depth=0,
     ):
         """Web search via DoH-resolved HTTPS. Fires all 4 engines
         (baidu, sogou, bing_cn, bing_intl) in parallel, then
-        de-duplicates and re-ranks the merged results.
+        re-ranks and de-duplicates the merged results.
 
         Engine mix designed for complementary coverage:
           baidu       – Chinese-language sites, government portals
@@ -843,45 +882,94 @@ class SearchEngine:
         if freshness in ("d", "w", "m", "y"):
             freshness_suffix = f"&tbs=qdr:{freshness}"
 
-        # ── Page 1: fire all engines ────────────────────────
-        all_results = []
-        seen_urls = set()
-        page_fetch_ms = []
+        try:
+            include_domains = normalize_domains(include_domains)
+            exclude_domains = normalize_domains(exclude_domains)
+        except ValueError as exc:
+            return {"error": str(exc), "results": [], "query": query}
 
-        p1_backends = build_backends(query, page=0, topic=topic, freshness_suffix=freshness_suffix)
-        p1_results, any_success, p1_ms = self._search_fire_one_page(p1_backends, seen_urls)
-        all_results.extend(p1_results)
-        page_fetch_ms.append(p1_ms)
+        explicit_site = simple_site(query)
+        site_path = ""
+        if explicit_site:
+            host, site_path = explicit_site
+            if not include_domains or any(within_domain(host, allowed) for allowed in include_domains):
+                include_domains = (host,)
+            else:
+                intersection = tuple(d for d in include_domains if within_domain(d, host))
+                if not intersection:
+                    return {
+                        "query": query,
+                        "backend": "multi",
+                        "results": [],
+                        "search_pages": [],
+                        "domain_search": {
+                            "domains": list(include_domains),
+                            "status": "conflicting_scopes",
+                            "explicit_site": host + site_path,
+                            "matched_urls": 0,
+                        },
+                    }
+                include_domains = intersection
 
-        if not any_success:
-            self._search_cooldown_until = time.time() + 30
-            self._search_fail_count = 1
-            print("[SEARCH] entering 30s cooldown (all backends failed)", file=sys.stderr, flush=True)
-            return {"error": "all backends failed", "results": [], "query": query}
+        effective_topic = topic or "general"
+        all_results, pages, available = self._search_topic_pages(
+            query, effective_topic, freshness_suffix, include_domains, exclude_domains, max_results, site_path
+        )
+        if topic == "news" and not all_results:
+            effective_topic = "general"
+            all_results, general_pages, available = self._search_topic_pages(
+                query, effective_topic, freshness_suffix, include_domains, exclude_domains, max_results, site_path
+            )
+            pages.extend(general_pages)
+
+        if effective_topic == "general" and topic != "news" and not all_results and any(
+            page.get("off_topic_headword") for page in pages
+        ):
+            # A dominated general search contained no usable candidates. Try the
+            # other index once, preserving the original query and its filters.
+            extra, extra_pages, news_available = self._search_topic_pages(
+                query, "news", freshness_suffix, include_domains, exclude_domains, max_results, site_path
+            )
+            for page in extra_pages:
+                page["strategy"] = "headword_news_fallback"
+            pages.extend(extra_pages)
+            all_results.extend(extra)
+            available |= news_available
+
+        coverage = {"search_pages": pages}
+        if topic == "news":
+            coverage.update(requested_topic="news", effective_topic=effective_topic)
+        if include_domains:
+            coverage["domain_search"] = {
+                "domains": list(include_domains),
+                "status": ("matches" if all_results else "no_match_in_sample") if available else "sources_unavailable",
+                "matched_urls": len({url_key(row["url"]) for row in all_results}),
+            }
+            if site_path:
+                coverage["domain_search"]["site_path"] = site_path
+
+        if not available:
+            # An engine under a challenge already has its own retry time. A new
+            # global cooldown would postpone its recovery and silence unrelated engines.
+            if not any(v in ("captcha", "antispider", "cooldown", "paced") for page in pages for v in page["engines"].values()):
+                self._search_cooldown_until = time.time() + 30
+                self._search_fail_count = 1
+            return {"error": "all backends failed", "results": [], "query": query, **coverage}
 
         self._search_cooldown_until = 0
         self._search_fail_count = 0
-
-        # ── News fallback #1: empty results ─────────────────
-        if topic == "news" and len(all_results) == 0:
-            print("[SEARCH] topic=news returned 0 results, falling back to general", file=sys.stderr, flush=True)
-            return self._do_web_search(
-                query,
-                max_results,
-                freshness,
-                topic="general",
-                exclude_domains=exclude_domains,
-                include_domains=include_domains,
-                _retry_depth=_retry_depth + 1,
-            )
-
-        # ── Domain filtering ────────────────────────────────
-        self._search_filter_domains(all_results, include_domains, exclude_domains)
+        page_fetch_ms = [page["elapsed_ms"] for page in pages]
 
         _t_after_bing = time.time()
 
         # ── Rerank ──────────────────────────────────────────
-        ranked = self._embedding_rerank(query, all_results)
+        ranked = []
+        seen = set()
+        for result in self._embedding_rerank(query, all_results):
+            key = url_key(result["url"])
+            if key not in seen:
+                ranked.append(result)
+                seen.add(key)
         print(f"[SEARCH] {len(all_results)} results → {len(ranked)} after re-rank", file=sys.stderr, flush=True)
 
         _t_after_rerank = time.time()
@@ -922,38 +1010,152 @@ class SearchEngine:
                     "rerank": round(_t_rerank, 2),
                     "pages": len(page_fetch_ms),
                     "page_ms": page_fetch_ms,
-                    "num_results_merged": len(all_results),
+                    "num_results_merged": len(ranked),
                 },
                 "engine_counts": _engine_counts,
             },
         }
+        response.update(coverage)
         return response
 
     # ── Search pipeline stage methods ─────────────────────────
     # Each stage extracted from _do_web_search — same logic, named interface.
 
+    def _search_topic_pages(
+        self, query, topic, freshness_suffix, include_domains, exclude_domains, max_results, site_path
+    ):
+        """At most two batches. Keep the user's original query for final ranking."""
+        results = []
+        pages = []
+        available = False
+        wire_query = scoped_query(query, include_domains)
+        page = 0
+        reason = "initial"
+        backends = build_backends(wire_query, page=page, topic=topic, freshness_suffix=freshness_suffix)
+        while backends:
+            rows, engines, elapsed, http_status = self._search_fire_one_page(backends)
+            candidates = len(rows)
+            self._search_filter_domains(rows, include_domains, exclude_domains, site_path)
+            candidates_after_domains = len(rows)
+            headword, rows = filter_headword_drift(query, rows) if not include_domains and topic == "general" else ({}, rows)
+            available |= any(state in ("results", "empty") for state in engines.values())
+            attempt = {
+                "topic": topic,
+                "page": page + 1,
+                "strategy": reason,
+                "query": prep_query(wire_query),
+                "elapsed_ms": elapsed,
+                "engines": engines,
+                "candidates": candidates,
+                "after_domains": candidates_after_domains,
+            }
+            if http_status:
+                attempt["http_status"] = http_status
+            if headword:
+                attempt["off_topic_headword"] = headword
+                attempt["discarded_headword_results"] = candidates_after_domains - len(rows)
+            with self._engine_backoff_lock:
+                now = time.monotonic()
+                retry = {
+                    h: math.ceil(self._engine_backoff_until[h] - now)
+                    for h in engines
+                    if self._engine_backoff_until.get(h, 0) > now
+                }
+                if engines.get("www.baidu.com") == "paced" and self._baidu_next_search_at > now:
+                    retry["www.baidu.com"] = math.ceil(self._baidu_next_search_at - now)
+            if retry:
+                attempt["retry_after_seconds"] = retry
+            pages.append(attempt)
+            results.extend(rows)
+            if not include_domains or len(pages) == 2 or len({url_key(row["url"]) for row in results}) >= max_results:
+                break
+            # Changing the query can help an engine with no hits; ordinary pagination
+            # is useful only for engines that actually returned candidates on page one.
+            shorter = focused_query(query) if not results else None
+            if shorter:
+                wire_query = scoped_query(shorter, include_domains)
+                reason = "focused_terms"
+                eligible = {h for h, state in engines.items() if state in ("results", "empty", "redirected")}
+            elif wire_query != query and not site_operators(query):
+                # Preserve legitimate matches of the original query when a provider
+                # underfills a generated site query. The allowlist still applies.
+                wire_query = query
+                reason = "original_terms"
+                eligible = {h for h, state in engines.items() if state in ("results", "empty", "redirected")}
+            else:
+                page = 1
+                reason = "next_page"
+                eligible = {h for h, state in engines.items() if state == "results"}
+            if not eligible:
+                break
+            backends = [
+                b
+                for b in build_backends(wire_query, page=page, topic=topic, freshness_suffix=freshness_suffix)
+                if b[0] in eligible
+            ]
+        return results, pages, available
+
     def _search_fetch_one(self, host, path, parse_fn, follow, port, accept_language, pool_tag):
-        """Fetch a single engine's results. Handles backoff, cookies,
-        anti-spider detection. Returns (host, html|status_tag, parse_fn|None, elapsed, tag)."""
-        _pool_start = time.time()
-
+        """Skip a cooling host immediately; after expiry allow one recovery probe."""
         with self._engine_backoff_lock:
-            bo_until = self._engine_backoff_until.get(host, 0)
-        _now = time.time()
-        if _now < bo_until:
-            wait = bo_until - _now
-            print(f"[SEARCH] {host}[{pool_tag}] backoff wait {wait:.1f}s", file=sys.stderr, flush=True)
-            time.sleep(wait)
+            until = self._engine_backoff_until.get(host)
+            if (until is not None and until > time.monotonic()) or host in self._engine_recovery_probes:
+                return host, "cooldown", None, 0.0, pool_tag
+            if host == "www.baidu.com":
+                if self._baidu_search_active or time.monotonic() < self._baidu_next_search_at:
+                    return host, "paced", None, 0.0, pool_tag
+                self._baidu_search_active = True
+            probe = until is not None
+            if probe:
+                self._engine_recovery_probes.add(host)
 
+        reply = None
+        try:
+            reply = self._fetch_search_page(host, path, parse_fn, follow, port, accept_language, pool_tag)
+            return reply
+        finally:
+            with self._engine_backoff_lock:
+                if host == "www.baidu.com":
+                    self._baidu_search_active = False
+                if probe:
+                    self._engine_recovery_probes.discard(host)
+                challenged = reply is not None and reply[2] is None and reply[1] in ("captcha", "antispider")
+                if challenged:
+                    # Concurrent first failures belong to the same cooldown period.
+                    now = time.monotonic()
+                    if self._engine_backoff_until.get(host, 0) <= now:
+                        if host == "www.baidu.com":
+                            delay = BAIDU_CAPTCHA_COOLDOWN_SECONDS
+                        else:  # Sogou antispider: double consecutive penalties until capped.
+                            previous = self._engine_backoff_secs.get(host)
+                            delay = (SOGOU_CHALLENGE_INITIAL_SECONDS if previous is None else
+                                     min(previous * 2, SOGOU_CHALLENGE_MAX_SECONDS))
+                        self._engine_backoff_secs[host] = delay
+                        self._engine_backoff_until[host] = now + delay
+                        print(f"[SEARCH] {host} {reply[1]} → backoff {delay}s", file=sys.stderr, flush=True)
+                elif probe and self._engine_backoff_until.get(host) == until:
+                    if reply is not None and reply[2] is not None:
+                        self._engine_backoff_until.pop(host, None)
+                        self._engine_backoff_secs.pop(host, None)
+                    else:
+                        self._engine_backoff_until[host] = time.monotonic() + self._engine_backoff_secs[host]
+
+    def _fetch_search_page(self, host, path, parse_fn, follow, port, accept_language, pool_tag):
+        """Return (host, HTML or failure reason, parser, elapsed seconds, pool tag)."""
+        _pool_start = time.time()
         with self._host_cookies_lock:
-            cookies = self._host_cookies.get(host)
+            if host not in self._host_cookies:
+                self._host_cookies[host] = _new_cookie_jar()
+            cookies = self._host_cookies[host]
 
         # ── Sogou: acquire homepage cookies to avoid antispider ─
         # Sogou's web_hd detection requires ABTEST + IPLOC cookies
         # from the homepage before the first search request.
         if host == "www.sogou.com" and not cookies:
             try:
-                _, _, _hp_jar = self._http_get(host, "/", timeout=12, force_tls12=True, simple_headers=True)
+                seed, _, _hp_jar = self._http_get(host, "/", timeout=12, force_tls12=True, simple_headers=True, cookies=cookies)
+                if self._search_challenge_url(host, seed.getheader("Location")):
+                    return host, "antispider", None, time.time() - _pool_start, pool_tag
                 if _hp_jar:
                     with self._host_cookies_lock:
                         self._host_cookies[host] = _hp_jar
@@ -971,6 +1173,10 @@ class SearchEngine:
             # headless-detection (antip=web_hd) — cap at TLS 1.2.
             _simple = host == "www.sogou.com"
             _tls12 = host == "www.sogou.com"
+            if host == "www.baidu.com":
+                # Measure from the actual dispatch, including failed attempts.
+                with self._engine_backoff_lock:
+                    self._baidu_next_search_at = time.monotonic() + BAIDU_SEARCH_INTERVAL_SECONDS
             resp, body, jar = self._http_get(
                 host,
                 path,
@@ -981,6 +1187,7 @@ class SearchEngine:
                 cookies=cookies,
                 simple_headers=_simple,
                 force_tls12=_tls12,
+                stop_at_challenge=True,
             )
 
             if jar:
@@ -990,163 +1197,96 @@ class SearchEngine:
             html = body.decode("utf-8", errors="replace")
             _pool_elapsed = time.time() - _pool_start
 
-            # ── Sogou anti-spider detection ─────────────────
-            # Sogou redirects to /antispider/ when it detects bots.
-            # With follow_redirects=True, the 302 is followed and we
-            # get a 200 antispider page.  Detect both cases.
-            if host == "www.sogou.com":
-                _loc = resp.getheader("Location") or ""
-                _is_antispider = (
-                    # Case 1: 302 block (follow_redirects=False path)
-                    (
-                        resp.status == 302
-                        and len(html) < 500
-                        and ("antispider" in html.lower() or "antispider" in _loc.lower())
-                    )
-                    # Case 2: 200 antispider page (followed redirect)
-                    or (resp.status == 200 and "/antispider/" in html[:500].lower() and len(html) < 5000)
-                )
-                if _is_antispider:
-                    with self._engine_backoff_lock:
-                        cur = self._engine_backoff_secs.get(host, 30)
-                        # Penalty doubles each time, capped at 120s for IP cooldown
-                        penalty = min(cur * 2, 120)
-                        self._engine_backoff_secs[host] = penalty
-                        self._engine_backoff_until[host] = time.time() + penalty
-                    print(f"[SEARCH] sogou antispider → backoff {penalty}s", file=sys.stderr, flush=True)
-                    return host, "antispider", None, _pool_elapsed, pool_tag
-            # ── Baidu captcha detection ────────────────────
-            if host == "www.baidu.com":
-                loc = resp.getheader("Location") or ""
-                if resp.status == 302 and ("wappass.baidu.com" in loc or "wappass.baidu.com" in html):
-                    with self._engine_backoff_lock:
-                        cur = self._engine_backoff_secs.get(host, 30)
-                        self._engine_backoff_secs[host] = cur
-                        self._engine_backoff_until[host] = time.time() + cur
-                    print(f"[SEARCH] baidu captcha → backoff {cur}s", file=sys.stderr, flush=True)
-                    return host, "captcha", None, _pool_elapsed, pool_tag
+            location = resp.getheader("Location") or ""
+            final_url = getattr(resp, "url", "") or ""
+            challenge = self._search_challenge_url(host, location) or self._search_challenge_url(host, final_url)
+            if host == "www.sogou.com" and (challenge or (len(html) < 5000 and "/antispider/" in html[:500].lower())):
+                return host, "antispider", None, _pool_elapsed, pool_tag
+            if host == "www.baidu.com" and (
+                challenge or (resp.status == 302 and "wappass.baidu.com" in html)
+                or re.search(r"<title\b[^>]*>\s*百度安全验证\s*</title\s*>", html[:64000], re.I)
+            ):
+                return host, "captcha", None, _pool_elapsed, pool_tag
+
+            if not 200 <= resp.status < 300:
+                return host, f"HTTP {resp.status}", None, time.time() - _pool_start, pool_tag
+            if host in ("cn.bing.com", "www.bing.com") and getattr(resp, "url", None):
+                final = urlparse(resp.url)
+                sent = urlparse(path)
+                expected_query = urllib.parse.parse_qs(sent.query).get("q")
+                final_query = urllib.parse.parse_qs(final.query).get("q")
+                bing_domain = (final.hostname or "").lower()
+                if not (
+                    (bing_domain == "bing.com" or bing_domain.endswith(".bing.com"))
+                    and final.path.rstrip("/") == sent.path.rstrip("/")
+                    and bing_query_matches(expected_query, final_query)
+                ):
+                    return host, "redirected away from query", None, time.time() - _pool_start, pool_tag
 
             return host, html, parse_fn, _pool_elapsed, pool_tag
         except Exception as e:
             _pool_elapsed = time.time() - _pool_start
             return host, str(e), None, _pool_elapsed, pool_tag
 
-    def _search_fire_one_page(self, backends, seen_urls):
-        """Fire one page batch across all engines in parallel.
-        Returns (page_results, any_success, batch_ms)."""
-        _batch_start = time.time()
-        pool_lock = threading.Lock()
+    def _search_fire_one_page(self, backends):
+        """Fetch concurrently, retaining backend order for reproducible ties."""
+        start = time.time()
         page_results = []
-        page_any_success = [False]
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max(self.max_workers, 6)) as ex:
-            futures = [
-                ex.submit(self._search_fetch_one, h, p, ps, fw, pt, al, ptg) for h, p, ps, fw, pt, al, ptg in backends
-            ]
-
-            for fut in concurrent.futures.as_completed(futures):
-                host, html, parse_fn, pool_elapsed, pool_tag = fut.result()
+        engines = {}
+        http_status = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(self.max_workers, 6)) as executor:
+            futures = [executor.submit(self._search_fetch_one, *backend) for backend in backends]
+            for future in futures:
+                host, html, parse_fn, elapsed, pool_tag = future.result()
                 if parse_fn is None:
-                    print(
-                        f"[SEARCH] {host}[{pool_tag}] failed after {pool_elapsed:.2f}s: {html[:100] if html else 'unknown'}",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                    status = re.fullmatch(r"HTTP (\d{3})", html)
+                    if status:
+                        http_status[host] = int(status[1])
+                    if html == "redirected away from query":
+                        engines[host] = "redirected"
+                    else:
+                        engines[host] = html if html in ("cooldown", "captcha", "antispider", "paced") else "unavailable"
+                    print(f"[SEARCH] {host}[{pool_tag}] {engines[host]}: {html}", file=sys.stderr, flush=True)
                     continue
-                _parse_start = time.time()
+                parse_start = time.time()
                 try:
                     results = parse_fn(html)
-                except Exception as _parse_err:
-                    _parse_elapsed = time.time() - _parse_start
-                    print(f"[SEARCH] {host}[{pool_tag}] parse error: {_parse_err}", file=sys.stderr, flush=True)
+                except Exception as exc:
+                    engines[host] = "parse_error"
+                    print(f"[SEARCH] {host}[{pool_tag}] parse error: {exc}", file=sys.stderr, flush=True)
                     continue
-                _parse_elapsed = time.time() - _parse_start
-                if results:
-                    # Derive engine name from pool_tag (strip trailing _pgN)
-                    _engine = "_".join(pool_tag.split("_")[:-1]) if "_pg" in pool_tag else pool_tag
-                    with pool_lock:
-                        page_any_success[0] = True
-                        for r in results:
-                            url_key = r["url"].lower().rstrip("/")
-                            if url_key not in seen_urls:
-                                seen_urls.add(url_key)
-                                r["_source_engine"] = _engine
-                                page_results.append(r)
-                    print(
-                        f"[SEARCH] {host}[{pool_tag}] returned {len(results)} results "
-                        f"(+{len(page_results)} new after dedup)",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                    SearchEngine._log_timing(
-                        f"[TIMING] pool={pool_tag} fetch={pool_elapsed:.2f}s "
-                        f"parse={_parse_elapsed:.2f}s results={len(results)}\n"
-                    )
-                else:
-                    print(
-                        f"[SEARCH] {host}[{pool_tag}] returned 0 parsed results "
-                        f"(HTML {len(html)} bytes) fetch={pool_elapsed:.2f}s",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-
-        _batch_ms = int((time.time() - _batch_start) * 1000)
-        return page_results, page_any_success[0], _batch_ms
-
-    def _search_filter_domains(self, all_results, include_domains, exclude_domains):
-        """Post-filter results by domain whitelist/blacklist. Mutates list in-place."""
-        if include_domains and all_results:
-            include_set = {d.lower().strip() for d in include_domains}
-            before = len(all_results)
-            filtered = []
-            for r in all_results:
-                try:
-                    dom = urlparse(r.get("url", "")).netloc.lower()
-                except Exception:
-                    dom = ""
-                for inc in include_set:
-                    if dom == inc or dom.endswith("." + inc):
-                        filtered.append(r)
-                        break
-            all_results[:] = filtered
-            kept = len(all_results)
-            if kept < before:
-                domain_list = ", ".join(sorted(include_set))
-                print(
-                    f"[SEARCH] include_domains: {before} → {kept} (only [{domain_list}])", file=sys.stderr, flush=True
-                )
-                SearchEngine._log_timing(f"[TIMING] include_domains kept={kept} before={before}\n")
-
-        if exclude_domains and all_results:
-            exclude_set = {d.lower().strip() for d in exclude_domains}
-            before = len(all_results)
-            filtered = []
-            for r in all_results:
-                matched = False
-                try:
-                    dom = urlparse(r.get("url", "")).netloc.lower()
-                except Exception:
-                    dom = ""
-                for ex in exclude_set:
-                    if dom == ex or dom.endswith("." + ex):
-                        matched = True
-                        break
-                if not matched:
-                    filtered.append(r)
-            all_results[:] = filtered
-            removed = before - len(all_results)
-            if removed:
-                domain_list = ", ".join(sorted(exclude_set))
-                print(
-                    f"[SEARCH] exclude_domains: {before} → {len(all_results)} (removed {removed} from [{domain_list}])",
-                    file=sys.stderr,
-                    flush=True,
-                )
+                engines[host] = "results" if results else "empty"
+                for result in results:
+                    result["_source_engine"] = pool_tag.rsplit("_pg", 1)[0]
+                    page_results.append(result)
                 SearchEngine._log_timing(
-                    f"[TIMING] exclude_domains removed={removed} before={before} after={len(all_results)}\n"
+                    f"[TIMING] pool={pool_tag} fetch={elapsed:.2f}s "
+                    f"parse={time.time() - parse_start:.2f}s results={len(results)}\n"
                 )
-            else:
-                SearchEngine._log_timing(f"[TIMING] exclude_domains no_match before={before}\n")
+        return page_results, engines, int((time.time() - start) * 1000), http_status
+
+    def _search_filter_domains(self, all_results, include_domains, exclude_domains, site_path=""):
+        """Validate parsed destinations independently of provider-side site operators."""
+        if not include_domains and not exclude_domains:
+            return
+        kept = []
+        path_prefix = site_path_key(site_path)
+        for row in all_results:
+            try:
+                parsed = urlparse(row["url"])
+                host = domain_key(parsed.hostname or "")
+            except ValueError:
+                continue
+            if not host or (include_domains and not any(within_domain(host, d) for d in include_domains)):
+                continue
+            if path_prefix:
+                path = site_path_key(parsed.path)
+                if path != path_prefix and not path.startswith(path_prefix + "/"):
+                    continue
+            if not any(within_domain(host, d) for d in exclude_domains):
+                kept.append(row)
+        SearchEngine._log_timing(f"[TIMING] domain filter kept={len(kept)} before={len(all_results)}\n")
+        all_results[:] = kept
 
     # ── Web fetch ───────────────────────────────────────────
 

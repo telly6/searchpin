@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "searchpin"
-version = "1.0.9"
+version = "1.0.10"
 description = "Commercial-grade search quality. Zero keys. Zero bills."
 authors = [
     {name = "Searchpin Contributors"}
@@ -26,6 +26,7 @@ dependencies = [
     "fastembed>=0.3.0",
     "numpy",
     "brotli",
+    "beautifulsoup4>=4.12,<5",
     "pypdf>=5,<7",
 ]
 

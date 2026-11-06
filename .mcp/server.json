@@ -3,7 +3,7 @@
   "name": "io.github.telly6/searchpin",
   "title": "Searchpin — Free Web Search for AI Agents",
   "description": "Free web search for AI agents — multi-engine parallel search, smart ranking, no sign-up, no limits",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "repository": {
     "url": "https://github.com/telly6/searchpin",
     "source": "github"
@@ -13,7 +13,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "searchpin",
-      "version": "1.0.9",
+      "version": "1.0.10",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

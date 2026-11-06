@@ -10,6 +10,11 @@ import os
 PRODUCT_NAME = os.environ.get("SEARCHPIN_NAME", "Searchpin")
 DEFAULT_MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+BAIDU_SEARCH_INTERVAL_SECONDS = 20
+BAIDU_CAPTCHA_COOLDOWN_SECONDS = 600
+SOGOU_CHALLENGE_INITIAL_SECONDS = 60
+SOGOU_CHALLENGE_MAX_SECONDS = 120
+
 # ── DNS-over-HTTPS endpoints (tried in order) ─────────────────
 DOH_ENDPOINTS = [
     ("https://dns.google/resolve", "8.8.8.8"),
